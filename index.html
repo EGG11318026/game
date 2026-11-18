@@ -1,0 +1,3950 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>像素遺跡探索者 - 彈幕與煉獄・天堂篇</title>
+    <style>
+        /* 全局重置與像素風字體設定 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #14181f;
+            color: #f4f1de;
+            font-family: 'Courier New', Courier, 'Microsoft JhengHei', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 8px;
+        }
+
+        /* 遊戲外框與像素邊框風格 */
+        #game-shell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 980px;
+            background: #1f2633;
+            border: 4px solid #3a465c;
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75), inset 0 0 0 2px #10141c;
+            padding: 10px;
+            transition: border-color 0.4s ease, background-color 0.4s ease;
+        }
+
+        #game-shell.hell-theme {
+            background: #241114;
+            border-color: #9e2a2b;
+            box-shadow: 0 12px 36px rgba(180, 20, 20, 0.55), inset 0 0 0 2px #14080a;
+        }
+
+        #game-shell.heaven-theme {
+            background: #232d42;
+            border-color: #ffd166;
+            box-shadow: 0 12px 42px rgba(255, 224, 102, 0.45), inset 0 0 0 2px #3b4b6b;
+        }
+
+        /* 頂部狀態資訊列 */
+        #hud-bar {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            background: #131822;
+            border: 2px solid #2e384a;
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-bottom: 8px;
+        }
+
+        .hud-title {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #ffd166;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .hud-stats {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.92rem;
+        }
+
+        .hp-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #2a1820;
+            border: 2px solid #e63946;
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: #ffccd5;
+            font-weight: bold;
+        }
+
+        .gem-counter {
+            background: #232b3b;
+            border: 2px solid #4ea8de;
+            padding: 3px 9px;
+            border-radius: 6px;
+            color: #90e0ef;
+            font-weight: bold;
+        }
+
+        .gem-counter.hell-counter {
+            background: #331316;
+            border-color: #ff595e;
+            color: #ffccd5;
+        }
+
+        .gem-counter.heaven-counter {
+            background: #332c14;
+            border-color: #ffd166;
+            color: #fff3b0;
+        }
+
+        .pixel-btn {
+            background: linear-gradient(180deg, #4ea8de 0%, #2b6cb0 100%);
+            color: #fff;
+            border: 2px solid #90e0ef;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-family: inherit;
+            font-size: 0.86rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #1a365d;
+            transition: transform 0.08s ease;
+        }
+
+        .pixel-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1a365d;
+        }
+
+        .pixel-btn.secondary {
+            background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
+            border-color: #a0aec0;
+            box-shadow: 0 3px 0 #1a202c;
+        }
+
+        /* 畫布容器：保持像素銳利度 */
+        #canvas-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            background: #0c0f14;
+            border: 3px solid #2e384a;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        /* 探索提示對話框 (可點擊關閉且自動消失，不遮擋視線) */
+        #dialogue-box {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 88%;
+            max-width: 680px;
+            background: rgba(15, 20, 30, 0.88);
+            border: 2px solid #ffd166;
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: #fff;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.75);
+            display: none;
+            z-index: 10;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        #dialogue-title {
+            color: #ffd166;
+            font-weight: bold;
+            margin-bottom: 2px;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 暫停遮罩選單 */
+        #pause-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 14, 22, 0.78);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 15;
+            backdrop-filter: blur(2px);
+        }
+
+        #pause-overlay.active {
+            display: flex;
+        }
+
+        .pause-box {
+            background: #1a2230;
+            border: 3px solid #7c8da8;
+            border-radius: 10px;
+            padding: 20px 32px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85);
+            min-width: 280px;
+        }
+
+        .menu-btn-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        /* 遊戲主畫面與設定彈窗 */
+        .screen-overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(24, 32, 48, 0.82) 0%, rgba(10, 14, 22, 0.94) 100%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 25;
+            backdrop-filter: blur(2px);
+        }
+
+        .screen-overlay.active {
+            display: flex;
+        }
+
+        /* 全屏無遮擋精緻主畫面 UI 疊層（參考無名騎士團 & 我的勇者） */
+        #main-menu-overlay {
+            background: transparent;
+            backdrop-filter: none;
+            justify-content: space-between;
+            padding: 14px 18px 18px 18px;
+        }
+
+        .title-top-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .server-pill {
+            background: rgba(16, 26, 44, 0.78);
+            border: 2px solid #90e0ef;
+            border-radius: 6px;
+            padding: 4px 12px;
+            color: #ffffff;
+            font-size: 0.84rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.55);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .server-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #52b788;
+            box-shadow: 0 0 6px #52b788;
+        }
+
+        .title-emblem-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            align-self: flex-end;
+            margin-top: 10px;
+            margin-right: 12px;
+            pointer-events: none;
+            animation: titleFloat 3.2s ease-in-out infinite;
+        }
+
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .title-eng-badge {
+            background: linear-gradient(180deg, #ffb703 0%, #fb8500 100%);
+            border: 3px solid #10141c;
+            box-shadow: inset 0 2px 0 #fff3b0, 0 3px 0 #10141c;
+            color: #10141c;
+            font-size: 0.8rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            padding: 2px 12px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+
+        .epic-pixel-title {
+            font-size: clamp(1.9rem, 4.2vw, 2.85rem);
+            font-weight: 900;
+            letter-spacing: 4px;
+            background: linear-gradient(180deg, #fff3b0 0%, #ffd166 48%, #f77f00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(3px 0 0 #10141c) drop-shadow(-3px 0 0 #10141c) drop-shadow(0 3px 0 #10141c) drop-shadow(0 -3px 0 #10141c) drop-shadow(0 6px 0 #090c12);
+            line-height: 1.15;
+            padding: 0 6px;
+        }
+
+        .title-sub-ribbon {
+            margin-top: 4px;
+            background: linear-gradient(180deg, #48cae4 0%, #0077b6 100%);
+            border: 3px solid #10141c;
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 0.84rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            padding: 2px 14px;
+            text-shadow: 2px 2px 0 #10141c;
+            box-shadow: 0 3px 0 #10141c;
+        }
+
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .title-eng-badge {
+            background: linear-gradient(180deg, #ff9f1c 0%, #e76f51 100%);
+            border: 2px solid #fff3b0;
+            color: #ffffff;
+            font-size: 0.78rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            padding: 2px 12px;
+            border-radius: 4px;
+            text-shadow: 1px 1px 0 #000;
+            box-shadow: 0 3px 0 #5c2b29;
+            margin-bottom: 4px;
+        }
+
+        .epic-pixel-title {
+            font-size: clamp(2rem, 4.6vw, 3.1rem);
+            font-weight: 900;
+            letter-spacing: 5px;
+            background: linear-gradient(180deg, #ffffff 0%, #fff3b0 48%, #ffd166 75%, #f4a261 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 4px 0 #1b263b) drop-shadow(0 0 14px rgba(255, 224, 102, 0.65));
+            line-height: 1.15;
+        }
+
+        .title-sub-ribbon {
+            margin-top: 6px;
+            background: rgba(15, 23, 42, 0.76);
+            border-top: 2px solid #ffd166;
+            border-bottom: 2px solid #ffd166;
+            color: #fff3b0;
+            font-size: 0.86rem;
+            letter-spacing: 2px;
+            padding: 3px 18px;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        .title-bottom-dock {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .title-action-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        .epic-pixel-btn {
+            position: relative;
+            background: linear-gradient(180deg, #ffd166 0%, #f4a261 55%, #e76f51 100%);
+            color: #1d1e2c;
+            border: 3px solid #fff3b0;
+            border-radius: 8px;
+            padding: 10px 28px;
+            font-family: inherit;
+            font-size: 1.15rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #7f291c, 0 8px 18px rgba(0, 0, 0, 0.65);
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+            transition: transform 0.08s ease, filter 0.12s ease;
+        }
+
+        .epic-pixel-btn:hover {
+            filter: brightness(1.07);
+        }
+
+        .epic-pixel-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #7f291c, 0 4px 10px rgba(0, 0, 0, 0.65);
+        }
+
+        .epic-pixel-btn.secondary-wood {
+            background: linear-gradient(180deg, #4ea8de 0%, #277da1 55%, #1d4e89 100%);
+            color: #ffffff;
+            border-color: #caf0f8;
+            box-shadow: 0 5px 0 #102a43, 0 8px 18px rgba(0, 0, 0, 0.65);
+            text-shadow: 1px 1px 0 #0b192c;
+        }
+
+        .epic-pixel-btn.secondary-wood:active {
+            box-shadow: 0 2px 0 #102a43, 0 4px 10px rgba(0, 0, 0, 0.65);
+        }
+
+        .title-footer-meta {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.76rem;
+            color: rgba(255, 255, 255, 0.85);
+            text-shadow: 1px 1px 0 #000;
+            pointer-events: none;
+        }
+
+        .title-card {
+            background: rgba(25, 34, 48, 0.95);
+            border: 4px solid #ffd166;
+            border-radius: 14px;
+            padding: 28px 36px;
+            max-width: 460px;
+            width: 92%;
+            box-shadow: 0 0 36px rgba(255, 209, 102, 0.28), inset 0 0 0 2px #14181f;
+        }
+
+        .title-card h1 {
+            color: #ffd166;
+            font-size: 1.85rem;
+            text-shadow: 3px 3px 0 #000;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+
+        .title-subtitle {
+            color: #90e0ef;
+            font-size: 0.95rem;
+            margin-bottom: 22px;
+        }
+
+        .slider-group {
+            text-align: left;
+            margin-bottom: 16px;
+            background: #131822;
+            border: 2px solid #2e384a;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            color: #f8f9fa;
+            margin-bottom: 6px;
+        }
+
+        .pixel-slider {
+            width: 100%;
+            accent-color: #ffd166;
+            cursor: pointer;
+            height: 6px;
+        }
+
+        /* 勝利彈窗 */
+        #victory-modal {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 22, 38, 0.88);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            z-index: 20;
+        }
+
+        #victory-modal.active {
+            display: flex;
+        }
+
+        #victory-modal h2 {
+            color: #ffd166;
+            font-size: 1.85rem;
+            margin-bottom: 12px;
+            text-shadow: 3px 3px 0 #000;
+        }
+
+        #victory-modal p {
+            color: #f8f9fa;
+            max-width: 520px;
+            margin-bottom: 18px;
+            line-height: 1.65;
+            font-size: 1rem;
+        }
+
+        /* 底部操作提示與觸控虛擬按鍵 */
+        #controls-footer {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #a0aec0;
+        }
+
+        .key-badge {
+            display: inline-block;
+            background: #2d3748;
+            border: 2px solid #4a5568;
+            border-bottom-width: 4px;
+            border-radius: 4px;
+            padding: 1px 6px;
+            color: #fff;
+            font-weight: bold;
+            margin: 0 2px;
+        }
+
+        /* 行動端虛擬方向鍵 */
+        #mobile-dpad {
+            display: none;
+            grid-template-columns: repeat(3, 44px);
+            grid-template-rows: repeat(2, 44px);
+            gap: 4px;
+        }
+
+        @media (max-width: 768px), (pointer: coarse) {
+            #mobile-dpad {
+                display: grid;
+            }
+        }
+
+        .dpad-btn {
+            background: #2d3748;
+            border: 2px solid #718096;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .dpad-btn:active {
+            background: #4ea8de;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-shell">
+        <!-- 頂部狀態列 -->
+        <div id="hud-bar">
+            <div class="hud-title" id="world-title">⚔️ 像素遺跡探索者</div>
+            <div class="hud-stats">
+                <div class="hp-bar-container" title="生命值">❤️ <span id="hp-display">♥♥♥♥♥</span></div>
+                <div class="gem-counter" id="weapon-display" style="border-color: #f2cc8f; color: #f2cc8f;" title="目前裝備武器">🗡️ 探險短劍</div>
+                <div class="gem-counter" id="gem-counter-box">💎 區域寶石: <span id="gem-count">0</span> / <span id="gem-total">5</span></div>
+                <button id="btn-pause" class="pixel-btn secondary" title="暫停或繼續遊戲 (快捷鍵 P / ESC)">⏸️ 暫停</button>
+            </div>
+        </div>
+
+        <!-- 遊戲主畫布區域 -->
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas" width="960" height="600"></canvas>
+
+            <!-- 遊戲主畫面（全屏無遮擋像素美術風景與立體劍徽標題） -->
+            <div id="main-menu-overlay" class="screen-overlay active">
+                <div class="title-top-bar">
+                    <div class="server-pill"><span class="server-dot"></span> SERVER | 台中・慶紀之都</div>
+                    <div class="server-pill" style="border-color: #ffd166; color: #fff3b0;">⚔️ 騎士團遠征篇</div>
+                </div>
+
+                <div class="title-emblem-wrap">
+                    <div class="title-eng-badge">早八睡過頭怎麼就轉生到異世界了</div>
+                    <div class="epic-pixel-title">星核：最後的神諭</div>
+                    <div class="title-sub-ribbon">✦ 五大秘境・蒐集星核・拯救世界 ✦</div>
+                </div>
+
+                <div class="title-bottom-dock">
+                    <div class="title-action-row">
+                        <button id="btn-start-game" class="epic-pixel-btn">⚔️ 點擊開始遊戲</button>
+                        <button id="btn-open-settings" class="epic-pixel-btn secondary-wood">⚙️ 音效設定</button>
+                    </div>
+                    <div class="title-footer-meta">
+                        <span>Explorer(500168447)</span>
+                        <span>Ver 2.4.0 PIXEL REAL</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系統設定選單 -->
+            <div id="settings-overlay" class="screen-overlay" style="z-index: 30;">
+                <div class="title-card" style="border-color: #4ea8de;">
+                    <h2 style="color: #90e0ef; font-size: 1.45rem; margin-bottom: 16px;">⚙️ 遊戲音效設定</h2>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>🎵 背景音樂音量</span>
+                            <span id="bgm-vol-text" style="color: #ffd166;">40%</span>
+                        </div>
+                        <input type="range" id="bgm-vol-slider" class="pixel-slider" min="0" max="100" value="40">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>💥 射擊與攻擊音效</span>
+                            <span id="sfx-vol-text" style="color: #ffd166;">65%</span>
+                        </div>
+                        <input type="range" id="sfx-vol-slider" class="pixel-slider" min="0" max="100" value="65">
+                    </div>
+                    <button id="btn-close-settings" class="pixel-btn" style="width: 100%; margin-top: 6px;">✔️ 確認並返回</button>
+                </div>
+            </div>
+
+            <!-- 互動提示框 -->
+            <div id="dialogue-box" title="按空白鍵 (Space) 或點擊繼續／關閉">
+                <div id="dialogue-title">
+                    <span id="dialogue-heading">探索發現</span>
+                    <span id="dialogue-hint" style="font-size: 0.78rem; color: #ffd166;">[Space 繼續 / 關閉]</span>
+                </div>
+                <div id="dialogue-text"></div>
+            </div>
+
+            <!-- 暫停遮罩選單 (含重新開始與返回主畫面二次確認) -->
+            <div id="pause-overlay">
+                <div class="pause-box" id="pause-main-panel">
+                    <h2 style="color: #ffd166; font-size: 1.45rem; margin-bottom: 10px;">⏸️ 遊戲已暫停</h2>
+                    <p style="color: #dce1e8; font-size: 0.92rem; margin-bottom: 16px;">點擊下方按鈕或按 P / ESC 鍵繼續冒險</p>
+                    <div class="menu-btn-stack">
+                        <button id="btn-resume" class="pixel-btn">▶️ 繼續遊戲</button>
+                        <button id="btn-pause-settings" class="pixel-btn secondary">⚙️ 音效設定</button>
+                        <button id="btn-reset" class="pixel-btn secondary">🔄 重新開始</button>
+                        <button id="btn-return-title" class="pixel-btn secondary" style="border-color: #e63946; color: #ffb3c1;">🏠 返回主畫面</button>
+                    </div>
+                </div>
+
+                <!-- 返回主畫面二次確認面板 -->
+                <div class="pause-box" id="confirm-home-panel" style="display: none; border-color: #ff595e;">
+                    <h2 style="color: #ff595e; font-size: 1.35rem; margin-bottom: 10px;">⚠️ 確定返回主畫面？</h2>
+                    <p style="color: #dce1e8; font-size: 0.92rem; margin-bottom: 18px;">返回主畫面將會<strong>重置目前所有遊戲進度</strong>，確定要離開嗎？</p>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button id="btn-confirm-home-yes" class="pixel-btn" style="background: linear-gradient(180deg, #e63946 0%, #b51724 100%); border-color: #ff8fa3;">✔️ 確定返回</button>
+                        <button id="btn-confirm-home-no" class="pixel-btn secondary">✖️ 取消</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 過關結算畫面 -->
+            <div id="victory-modal">
+                <h2>👑 聖光加冕・創世神殿的祝福！</h2>
+                <p>
+                    「勇敢的探索者，你跨越了森林、雪山、沙漠、村莊與城堡的試煉，甚至從煉獄深淵中重塑靈魂歸來！」<br><br>
+                    至高創世之神賜予你永恆的星辰桂冠，你的傳奇將永遠銘刻在像素大陸的史詩之中！
+                </p>
+                <button id="btn-play-again" class="pixel-btn" style="font-size: 1rem; padding: 10px 22px;">🌟 開啟全新輪迴</button>
+            </div>
+        </div>
+
+        <!-- 底部操作說明與觸控面板 -->
+        <div id="controls-footer">
+            <div>
+                操作：<span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> 移動 ｜
+                <span class="key-badge">滑鼠左鍵</span> 攻擊與劈散彈幕 ｜ 拾取 <b>傳說武器</b> 與 <b>🩹繃帶</b>！
+            </div>
+
+            <div id="mobile-dpad">
+                <div></div>
+                <button class="dpad-btn" data-dir="w">W</button>
+                <div></div>
+                <button class="dpad-btn" data-dir="a">A</button>
+                <button class="dpad-btn" data-dir="s">S</button>
+                <button class="dpad-btn" data-dir="d">D</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 取得 DOM 元素與畫布上下文 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameShell = document.getElementById('game-shell');
+        const worldTitleEl = document.getElementById('world-title');
+        const hpDisplayEl = document.getElementById('hp-display');
+        const weaponDisplayEl = document.getElementById('weapon-display');
+        const gemCounterBox = document.getElementById('gem-counter-box');
+        const gemCountEl = document.getElementById('gem-count');
+        const gemTotalEl = document.getElementById('gem-total');
+        const btnPause = document.getElementById('btn-pause');
+        const pauseOverlay = document.getElementById('pause-overlay');
+        const pauseMainPanel = document.getElementById('pause-main-panel');
+        const confirmHomePanel = document.getElementById('confirm-home-panel');
+        const btnResume = document.getElementById('btn-resume');
+        const btnPauseSettings = document.getElementById('btn-pause-settings');
+        const btnReset = document.getElementById('btn-reset');
+        const btnReturnTitle = document.getElementById('btn-return-title');
+        const btnConfirmHomeYes = document.getElementById('btn-confirm-home-yes');
+        const btnConfirmHomeNo = document.getElementById('btn-confirm-home-no');
+        const mainMenuOverlay = document.getElementById('main-menu-overlay');
+        const btnStartGame = document.getElementById('btn-start-game');
+        const btnOpenSettings = document.getElementById('btn-open-settings');
+        const settingsOverlay = document.getElementById('settings-overlay');
+        const btnCloseSettings = document.getElementById('btn-close-settings');
+        const bgmVolSlider = document.getElementById('bgm-vol-slider');
+        const bgmVolText = document.getElementById('bgm-vol-text');
+        const sfxVolSlider = document.getElementById('sfx-vol-slider');
+        const sfxVolText = document.getElementById('sfx-vol-text');
+        const dialogueBox = document.getElementById('dialogue-box');
+        const dialogueHeading = document.getElementById('dialogue-heading');
+        const dialogueText = document.getElementById('dialogue-text');
+        const dialogueHint = document.getElementById('dialogue-hint');
+        const victoryModal = document.getElementById('victory-modal');
+        const btnPlayAgain = document.getElementById('btn-play-again');
+
+        // 離屏畫布：預先繪製地圖底圖與主畫面史詩風景
+        const bgCanvas = document.createElement('canvas');
+        bgCanvas.width = 960;
+        bgCanvas.height = 600;
+        const bgCtx = bgCanvas.getContext('2d');
+
+        const menuBgCanvas = document.createElement('canvas');
+        menuBgCanvas.width = 960;
+        menuBgCanvas.height = 600;
+        const menuBgCtx = menuBgCanvas.getContext('2d');
+
+        // --- 網格與地圖常數 ---
+        const TILE_SIZE = 32;
+        const COLS = 30;
+        const ROWS = 19;
+
+        // --- 8-Bit Web Audio 合成音效引擎 ---
+        let audioCtx = null;
+        let bgmVolume = 0.40;
+        let sfxVolume = 0.65;
+        let bgmInterval = null;
+        let bgmStep = 0;
+
+        function ensureAudioCtx() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function startBgmLoop() {
+            if (bgmInterval) return;
+            const melody = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 293.66, 349.23, 440.00, 349.23, 329.63, 293.66];
+            bgmInterval = setInterval(() => {
+                if (bgmVolume <= 0.01 || !audioCtx || audioCtx.state !== 'running') return;
+                if (isPaused && !isOnMainMenu) return;
+                try {
+                    const freq = melody[bgmStep % melody.length];
+                    bgmStep++;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(bgmVolume * 0.11, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0008, audioCtx.currentTime + 0.24);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } catch (e) {}
+            }, 280);
+        }
+
+        function playUiClickSfx() {
+            ensureAudioCtx();
+            if (sfxVolume <= 0.01 || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(660, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.07);
+                gain.gain.setValueAtTime(sfxVolume * 0.14, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.09);
+            } catch (e) {}
+        }
+
+        function playShootSfx(weaponId = 'default') {
+            ensureAudioCtx();
+            if (sfxVolume <= 0.01 || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                if (weaponId === 'hell_fireball' || weaponId === 'village_cannon') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(240, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(65, audioCtx.currentTime + 0.18);
+                } else if (weaponId === 'snow_staff' || weaponId === 'forest_bow') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(780, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(320, audioCtx.currentTime + 0.12);
+                } else {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(140, audioCtx.currentTime + 0.11);
+                }
+                gain.gain.setValueAtTime(sfxVolume * 0.18, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.19);
+            } catch (e) {}
+        }
+
+        // --- 地圖網格定義 (0:平地 1:小徑/地毯 2:牆壁/山岩 3:水域/岩漿 4:祭壇 5:樹木/柱飾 6:木橋) ---
+        const PROLOGUE_RAW_MAP = [
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,4,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,4,2],
+            [2,0,0,5,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,5,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,5,0,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,5,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,5,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,5,0,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,5,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,5,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,5,0,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,5,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+        ];
+
+        const HELL_RAW_MAP = [
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,1,1,1,1,0,0,3,3,0,0,0,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,2],
+            [2,1,0,0,1,0,0,3,3,0,0,2,2,0,0,0,2,2,0,3,3,0,0,0,5,0,0,0,0,2],
+            [2,1,0,0,1,1,1,6,6,1,1,2,0,0,0,0,0,2,1,6,6,1,1,0,0,0,2,2,0,2],
+            [2,0,0,5,0,0,0,3,3,0,1,0,0,0,0,0,0,0,1,3,3,0,1,0,0,0,2,0,0,2],
+            [2,0,0,0,0,0,0,3,3,0,1,0,0,0,4,0,0,0,1,3,3,0,1,1,1,1,1,0,0,2],
+            [2,2,2,0,0,2,2,2,2,0,1,0,0,0,0,0,0,0,1,2,2,0,0,0,0,0,1,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,3,3,0,1,0,0,2],
+            [2,0,5,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,3,3,0,1,0,0,2],
+            [2,0,0,0,3,3,3,0,0,2,2,0,0,0,1,0,0,0,2,2,0,0,0,6,6,1,1,0,0,2],
+            [2,0,0,0,3,3,3,0,0,2,0,0,0,0,1,0,0,0,0,2,0,0,0,3,3,0,0,0,5,2],
+            [2,1,1,1,6,6,6,1,1,1,1,1,0,0,1,0,0,1,1,1,1,1,0,3,3,0,0,0,0,2],
+            [2,1,0,0,3,3,3,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,2,2,0,2],
+            [2,1,0,0,0,0,0,0,5,0,0,1,0,0,0,0,0,1,0,5,0,1,1,1,1,0,0,0,0,2],
+            [2,1,0,0,2,2,0,0,0,0,0,1,1,1,6,6,1,1,0,0,0,0,0,0,1,0,0,0,0,2],
+            [2,1,0,0,2,0,0,0,0,0,0,0,0,0,3,3,0,0,0,0,2,2,0,0,1,1,1,1,0,2],
+            [2,1,1,0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,0,0,2,0,0,0,0,0,0,1,0,2],
+            [2,0,0,0,0,0,5,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,1,0,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+        ];
+
+        const HEAVEN_RAW_MAP = [
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,5,0,0,0,0,0,0,0,0,0,4,1,1,1,4,0,0,0,0,0,0,0,0,0,5,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,3,3,3,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,3,3,3,0,0,0,0,2],
+            [2,0,0,0,3,3,3,0,0,5,0,0,0,1,1,1,0,0,0,5,0,0,3,3,3,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,5,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,5,0,0,2],
+            [2,3,3,3,3,3,3,3,3,3,3,3,3,6,6,6,3,3,3,3,3,3,3,3,3,3,3,3,3,2],
+            [2,3,3,3,3,3,3,3,3,3,3,3,3,6,6,6,3,3,3,3,3,3,3,3,3,3,3,3,3,2],
+            [2,0,5,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,5,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,5,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,5,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,5,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+        ];
+
+        const OVERWORLD_BIOMES = {
+            forest: {
+                name: '迷霧森林遺跡',
+                icon: '🌿',
+                spawn: { col: 3, row: 3 },
+                weapon: { id: 'forest_bow', col: 14, row: 5 },
+                chests: [
+                    { col: 7, row: 2, gemName: '翡翠森之星', color: '#52b788' },
+                    { col: 25, row: 3, gemName: '古樹生命石', color: '#80ed99' },
+                    { col: 15, row: 9, gemName: '精靈露珠鑽', color: '#48cae4' },
+                    { col: 4, row: 15, gemName: '藤蔓之心', color: '#95d5b2' },
+                    { col: 26, row: 15, gemName: '森林守護印', color: '#ffd166' }
+                ],
+                bandages: [
+                    { col: 8, row: 8 },
+                    { col: 21, row: 10 }
+                ],
+                signs: [
+                    { col: 5, row: 3, title: '森林古碑', text: '【迷霧森林】林間藏有精靈藤蔓弓，小心草叢中埋伏的劍齒虎！' }
+                ],
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,0,5,0,0,0,0,0,0,3,3,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,2],
+                    [2,0,1,1,1,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,2],
+                    [2,0,1,1,1,1,1,1,1,1,1,1,6,6,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,1,0,0,0,0,0,5,0,0,0,3,3,0,0,0,0,1,0,0,2,2,0,0,0,0,0,0,2],
+                    [2,0,1,0,0,2,2,0,0,0,0,0,3,3,0,0,0,0,1,0,0,2,0,0,0,0,5,0,0,2],
+                    [2,0,1,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,2],
+                    [2,0,1,0,0,0,0,0,0,0,5,0,0,0,4,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2],
+                    [2,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,5,0,2],
+                    [2,3,3,3,3,3,1,0,0,2,2,0,0,0,0,0,0,0,2,2,0,0,3,3,6,3,3,3,3,2],
+                    [2,3,3,3,3,3,6,1,1,2,0,0,0,0,0,0,0,0,0,2,0,0,3,3,1,3,3,3,3,2],
+                    [2,0,0,0,0,0,1,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2],
+                    [2,0,5,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,1,0,0,0,0,2],
+                    [2,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,5,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,5,0,0,0,0,0,3,3,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,6,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ]
+            },
+            snow: {
+                name: '極地冰霜雪山',
+                icon: '❄️',
+                spawn: { col: 3, row: 9 },
+                weapon: { id: 'snow_staff', col: 14, row: 11 },
+                chests: [
+                    { col: 4, row: 2, gemName: '極光寒冰晶', color: '#90e0ef' },
+                    { col: 14, row: 3, gemName: '雪山冰魄石', color: '#48cae4' },
+                    { col: 26, row: 2, gemName: '霜狼圖騰玉', color: '#ade8f4' },
+                    { col: 5, row: 16, gemName: '永凍藍寶石', color: '#00b4d8' },
+                    { col: 26, row: 16, gemName: '冰河之心', color: '#ffd166' }
+                ],
+                bandages: [
+                    { col: 10, row: 5 },
+                    { col: 21, row: 13 }
+                ],
+                signs: [
+                    { col: 5, row: 9, title: '雪山路標', text: '【極地雪山】南方神壇供奉著永凍寒霜杖，可發射三向寒冰彈凍結雪怪！' }
+                ],
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,3,3,3,0,0,0,0,5,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,3,3,3,0,0,1,1,1,1,0,0,0,0,2],
+                    [2,0,0,2,2,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1,0,0,2,0,2],
+                    [2,0,0,2,0,0,0,0,1,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,1,0,0,2,0,2],
+                    [2,0,0,0,0,0,5,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,1,0,0,2,2,0,0,4,0,0,2,2,0,0,0,0,1,0,0,0,0,2],
+                    [2,0,1,1,1,1,1,1,1,0,0,2,0,0,0,0,0,0,0,2,0,0,0,0,1,1,1,1,0,2],
+                    [2,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,2],
+                    [2,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,1,0,2],
+                    [2,0,1,0,0,5,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,0,1,0,2],
+                    [2,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,1,0,0,0,0,1,0,0,2,2,0,1,0,2],
+                    [2,0,1,0,0,2,2,0,1,0,0,3,3,6,3,3,6,3,3,0,0,1,0,0,2,0,0,1,0,2],
+                    [2,0,1,0,0,2,0,0,1,0,0,3,3,1,3,3,1,3,3,0,0,1,0,0,0,0,0,1,0,2],
+                    [2,0,1,1,1,1,1,1,1,0,0,0,0,1,0,0,1,0,0,0,0,1,1,1,1,1,1,1,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ]
+            },
+            desert: {
+                name: '黃金沙海遺跡',
+                icon: '🏜️',
+                spawn: { col: 14, row: 16 },
+                weapon: { id: 'desert_whip', col: 15, row: 9 },
+                chests: [
+                    { col: 3, row: 2, gemName: '太陽神琥珀', color: '#ffb703' },
+                    { col: 26, row: 2, gemName: '法老黃金印', color: '#ffd166' },
+                    { col: 14, row: 2, gemName: '綠洲翡翠淚', color: '#2ec4b6' },
+                    { col: 3, row: 15, gemName: '沙暴紅瑪瑙', color: '#fb8500' },
+                    { col: 26, row: 15, gemName: '金字塔星核', color: '#ffca3a' }
+                ],
+                bandages: [
+                    { col: 9, row: 9 },
+                    { col: 20, row: 9 }
+                ],
+                signs: [
+                    { col: 12, row: 16, title: '沙漠石碑', text: '【黃金沙漠】遺跡中央藏有沙暴雷霆鞭，揮動可劈散彈幕並麻痺劇毒沙蠍！' }
+                ],
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,2],
+                    [2,0,0,5,0,0,2,0,0,0,0,3,3,0,0,0,3,3,0,0,0,0,2,0,0,5,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,3,3,0,4,0,3,3,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,2,2,0,0,0,0,5,0,0,0,0,1,1,1,0,0,0,0,5,0,0,0,0,2,2,0,0,2],
+                    [2,0,2,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,2,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,5,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,5,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,2,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,2,0,0,2],
+                    [2,0,2,2,0,0,0,0,5,0,0,0,0,1,1,1,0,0,0,0,5,0,0,0,0,2,2,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,2,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,2,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,2,2,0,0,0,0,0,1,1,1,0,0,0,0,0,2,2,0,0,0,0,0,0,2],
+                    [2,0,0,5,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,5,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ]
+            },
+            village: {
+                name: '翡翠邊境村莊',
+                icon: '🏘️',
+                spawn: { col: 14, row: 9 },
+                weapon: { id: 'village_cannon', col: 14, row: 5 },
+                chests: [
+                    { col: 3, row: 2, gemName: '工匠紅寶石', color: '#ff595e' },
+                    { col: 26, row: 2, gemName: '風車藍晶石', color: '#4ea8de' },
+                    { col: 3, row: 16, gemName: '麥田豐收玉', color: '#ffca3a' },
+                    { col: 26, row: 16, gemName: '鐘樓星辰石', color: '#c77dff' },
+                    { col: 14, row: 16, gemName: '村長守護鑽', color: '#80ed99' }
+                ],
+                bandages: [
+                    { col: 8, row: 9 },
+                    { col: 20, row: 9 }
+                ],
+                signs: [
+                    { col: 12, row: 9, title: '村莊告示牌', text: '【邊境村莊】鐵匠鋪留有矮人榴彈砲，可發射範圍炸藥轟飛史萊姆王！' }
+                ],
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,2,2,2,0,0,5,0,0,0,4,0,0,0,5,0,2,2,2,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2],
+                    [2,0,5,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,5,0,0,2],
+                    [2,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2],
+                    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,2],
+                    [2,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,2],
+                    [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,2],
+                    [2,0,0,0,0,0,1,0,0,0,0,0,3,3,6,3,3,0,0,0,0,1,0,0,0,0,0,0,0,2],
+                    [2,0,5,0,0,0,1,0,0,0,0,0,3,3,1,3,3,0,0,0,0,1,0,0,0,0,5,0,0,2],
+                    [2,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,2,2,2,0,0,0,0,0,0,1,0,0,0,0,0,2,2,2,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,2,2,2,0,0,5,0,0,0,1,0,0,0,5,0,2,2,2,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ]
+            },
+            castle: {
+                name: '皇家王座城堡',
+                icon: '🏰',
+                spawn: { col: 14, row: 16 },
+                weapon: { id: 'castle_sword', col: 14, row: 9 },
+                chests: [
+                    { col: 3, row: 2, gemName: '王冠紫水晶', color: '#c77dff' },
+                    { col: 26, row: 2, gemName: '聖殿黃金杯', color: '#ffd166' },
+                    { col: 14, row: 2, gemName: '王者榮耀鑽', color: '#fff3b0' },
+                    { col: 3, row: 16, gemName: '騎士誓約石', color: '#4ea8de' },
+                    { col: 26, row: 16, gemName: '皇家星辰印', color: '#ff595e' }
+                ],
+                bandages: [
+                    { col: 7, row: 9 },
+                    { col: 21, row: 9 }
+                ],
+                signs: [
+                    { col: 12, row: 16, title: '王座銘文', text: '【皇家城堡】大廳中央供奉著聖光王權巨劍，劍氣波可穿透並劈散沿途彈幕！' }
+                ],
+                map: [
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,5,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,5,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,2,2,0,0,0,0,5,0,0,0,1,1,1,0,0,0,5,0,0,0,0,2,2,0,0,0,2],
+                    [2,0,0,2,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,2,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,5,0,0,3,3,3,0,0,1,1,1,0,0,3,3,3,0,0,5,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,3,3,3,0,0,1,1,1,0,0,3,3,3,0,0,0,0,0,0,0,0,2],
+                    [2,1,1,1,1,1,1,1,6,6,6,1,1,1,1,1,1,1,6,6,6,1,1,1,1,1,1,1,0,2],
+                    [2,0,0,0,0,0,0,0,3,3,3,0,0,1,1,1,0,0,3,3,3,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,5,0,0,3,3,3,0,0,1,1,1,0,0,3,3,3,0,0,5,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,2,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,2,0,0,0,2],
+                    [2,0,0,2,2,0,0,0,0,5,0,0,0,1,1,1,0,0,0,5,0,0,0,0,2,2,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,0,0,0,0,5,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,5,0,0,0,0,0,2],
+                    [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+                    [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+                ]
+            }
+        };
+
+        const BIOME_KEYS = Object.keys(OVERWORLD_BIOMES);
+
+        // --- 六大區域專屬傳說武器配置 ---
+        const WEAPONS = {
+            default: {
+                id: 'default', name: '探險短劍', icon: '🗡️',
+                damage: 2, range: 64, speed: 0, cooldown: 16,
+                color: '#f2cc8f', coreColor: '#ffffff',
+                statusType: null, statusDuration: 0,
+                desc: '基礎近戰短劍，揮斬可劈散近距離敵方彈幕。'
+            },
+            forest_bow: {
+                id: 'forest_bow', name: '精靈藤蔓弓', icon: '🏹',
+                damage: 2, range: 340, speed: 7.5, cooldown: 15,
+                color: '#52b788', coreColor: '#d8f3dc',
+                statusType: 'poison', statusDuration: 180,
+                desc: '射出高速精靈毒箭，命中使怪物持續中毒扣血！'
+            },
+            snow_staff: {
+                id: 'snow_staff', name: '永凍寒霜杖', icon: '❄️',
+                damage: 2, range: 290, speed: 6.0, cooldown: 20,
+                color: '#48cae4', coreColor: '#ffffff',
+                statusType: 'freeze', statusDuration: 160,
+                desc: '一次發射三發扇形寒冰光彈，命中使怪物冰凍緩速！'
+            },
+            desert_whip: {
+                id: 'desert_whip', name: '沙暴雷霆鞭', icon: '⚡',
+                damage: 3, range: 115, speed: 0, cooldown: 14,
+                color: '#ffb703', coreColor: '#fff3b0',
+                statusType: 'shock', statusDuration: 130,
+                desc: '揮出超長距離金色雷電弧光，劈散彈幕並麻痺怪物！'
+            },
+            village_cannon: {
+                id: 'village_cannon', name: '矮人榴彈砲', icon: '💣',
+                damage: 3, range: 310, speed: 5.4, cooldown: 24,
+                color: '#fb8500', coreColor: '#ffd166',
+                statusType: null, statusDuration: 0,
+                desc: '發射高爆矮人炸藥彈，命中引發大範圍衝擊波！'
+            },
+            castle_sword: {
+                id: 'castle_sword', name: '聖光王權巨劍', icon: '⚔️',
+                damage: 3, range: 360, speed: 6.4, cooldown: 18,
+                color: '#ffd166', coreColor: '#ffffff',
+                statusType: null, statusDuration: 0,
+                desc: '揮出穿透型聖光劍氣波，可連續貫穿多名敵人！'
+            },
+            hell_fireball: {
+                id: 'hell_fireball', name: '熔岩火球術', icon: '🔥',
+                damage: 3, range: 400, speed: 6.8, cooldown: 16,
+                color: '#ff5400', coreColor: '#ffea00',
+                statusType: 'burn', statusDuration: 180,
+                desc: '煉獄禁術！發射超遠距離高溫火球，附著持續 3 秒的烈焰燃燒！'
+            }
+        };
+
+        // --- 全局遊戲狀態變數 ---
+        let mapGrid = [];
+        let fogGrid = [];
+        let chests = [];
+        let bandages = [];
+        let weaponPickup = null;
+        let signs = [];
+        let monsters = [];
+        let bullets = [];
+        let slashes = [];
+        let particles = [];
+        let floatingTexts = [];
+        let portalGate = null;
+
+        let currentRealm = 'prologue';
+        let currentBiomeKey = 'forest';
+        let completedBiomes = new Set();
+        let savedOverworldState = null;
+        let heavenEndingTriggered = false;
+
+        let isOnMainMenu = true;
+        let isPaused = true;
+        let pendingHellTimer = null;
+        let pendingBiomeTimer = null;
+        let pendingPortalTimer = null;
+
+        let dialogueQueue = [];
+        let activeDialogueTitle = '';
+        let activeDialogueAutoMs = 4500;
+        let dialogueTimer = null;
+
+        const keys = { w: false, a: false, s: false, d: false };
+
+        const player = {
+            x: 14 * TILE_SIZE + 4,
+            y: 13 * TILE_SIZE + 4,
+            width: 22,
+            height: 24,
+            speed: 3.1,
+            dir: 'up',
+            isMoving: false,
+            animFrame: 0,
+            animTimer: 0,
+            hp: 5,
+            maxHp: 5,
+            weapon: 'default',
+            invulnTimer: 0,
+            attackCooldown: 0
+        };
+
+        // --- 確定性偽隨機與像素底圖繪製輔助函式 ---
+        function pseudoRandom(x, y, seed = 1) {
+            const n = Math.sin(x * 12.9898 + y * 78.233 + seed * 43.123) * 43758.5453;
+            return n - Math.floor(n);
+        }
+
+        function drawTileDetail(targetCtx, sx, sy, pixelSize, palette) {
+            for (let py = 0; py < TILE_SIZE; py += pixelSize) {
+                for (let px = 0; px < TILE_SIZE; px += pixelSize) {
+                    const r = pseudoRandom(sx + px, sy + py, palette.length);
+                    const idx = Math.min(palette.length - 1, Math.floor(r * palette.length));
+                    targetCtx.fillStyle = palette[idx];
+                    targetCtx.fillRect(sx + px, sy + py, pixelSize, pixelSize);
+                }
+            }
+        }
+
+        function drawPixelTree(targetCtx, sx, sy, theme) {
+            if (theme === 'hell') {
+                // 煉獄黑曜石尖柱
+                targetCtx.fillStyle = '#141118';
+                targetCtx.fillRect(sx + 8, sy + 4, 16, 24);
+                targetCtx.fillStyle = '#ff4d00';
+                targetCtx.fillRect(sx + 13, sy + 8, 6, 14);
+            } else if (theme === 'heaven') {
+                // 天堂黃金聖樹
+                targetCtx.fillStyle = '#b08968';
+                targetCtx.fillRect(sx + 13, sy + 18, 6, 12);
+                targetCtx.fillStyle = '#ffd166';
+                targetCtx.fillRect(sx + 5, sy + 4, 22, 16);
+                targetCtx.fillStyle = '#ffffff';
+                targetCtx.fillRect(sx + 8, sy + 6, 16, 10);
+            } else if (theme === 'snow') {
+                // 雪松
+                targetCtx.fillStyle = '#582f0e';
+                targetCtx.fillRect(sx + 13, sy + 20, 6, 10);
+                targetCtx.fillStyle = '#2b9348';
+                targetCtx.fillRect(sx + 6, sy + 8, 20, 14);
+                targetCtx.fillStyle = '#ffffff';
+                targetCtx.fillRect(sx + 6, sy + 6, 20, 7);
+            } else if (theme === 'desert') {
+                // 仙人掌
+                targetCtx.fillStyle = '#1b4332';
+                targetCtx.fillRect(sx + 12, sy + 4, 8, 24);
+                targetCtx.fillRect(sx + 6, sy + 10, 6, 4);
+                targetCtx.fillRect(sx + 6, sy + 7, 4, 6);
+                targetCtx.fillRect(sx + 20, sy + 12, 6, 4);
+                targetCtx.fillRect(sx + 22, sy + 9, 4, 6);
+            } else {
+                // 翠綠像素大樹
+                targetCtx.fillStyle = '#1b1d24';
+                targetCtx.fillRect(sx + 11, sy + 18, 10, 12);
+                targetCtx.fillStyle = '#6f4518';
+                targetCtx.fillRect(sx + 13, sy + 18, 6, 11);
+                targetCtx.fillStyle = '#1b4332';
+                targetCtx.fillRect(sx + 4, sy + 4, 24, 16);
+                targetCtx.fillStyle = '#40916c';
+                targetCtx.fillRect(sx + 6, sy + 5, 20, 13);
+                targetCtx.fillStyle = '#74c69d';
+                targetCtx.fillRect(sx + 8, sy + 6, 12, 6);
+            }
+        }
+
+        /**
+         * 離屏逐像素繪製主畫面史詩風景（重點參考 Empire Game: Pixel Hero：雲海天空之城、層疊岩石高台、繁茂像素古樹與黑邊點陣英雄小隊）
+         */
+        function generateMainMenuBackground() {
+            const c = menuBgCtx;
+            const P = 4; // 4x4 清晰像素顆粒網格
+
+            // 1. 晴朗高飽和奇幻藍天
+            const skyBands = ['#2b7de9', '#3b92f6', '#52a7ff', '#6db9ff', '#8ccbff', '#b3deff'];
+            const bandH = Math.ceil(310 / skyBands.length);
+            skyBands.forEach((col, i) => {
+                c.fillStyle = col;
+                c.fillRect(0, i * bandH, 960, bandH + 2);
+            });
+
+            // 2. 蓬鬆層次像素白雲海（參考 Pixel Hero 背景雲海與浮空島）
+            const drawOutlinedCloud = (cx, cy, w, h) => {
+                for (let y = 0; y < h; y += P) {
+                    for (let x = 0; x < w; x += P) {
+                        const nx = (x - w / 2) / (w / 2);
+                        const ny = (y - h / 2) / (h / 2);
+                        const wave = Math.sin(x * 0.07) * 0.25 + Math.cos(x * 0.14) * 0.12;
+                        const d = nx * nx + ny * ny;
+                        if (d < 0.88 + wave) {
+                            c.fillStyle = ny > 0.25 ? '#a2d2ff' : (ny > -0.15 ? '#e0fbfc' : '#ffffff');
+                            c.fillRect(cx + x, cy + y, P, P);
+                        }
+                    }
+                }
+            };
+            drawOutlinedCloud(160, 40, 260, 88);
+            drawOutlinedCloud(430, 68, 220, 76);
+            drawOutlinedCloud(760, 24, 240, 80);
+            // 中景雲海層
+            for (let x = -40; x < 980; x += 110) {
+                drawOutlinedCloud(x, 220 + (x % 3) * 14, 180, 96);
+            }
+
+            // 3. 右上方雲海中的宏偉藍白尖塔天空城堡（致敬 Empire Game: Pixel Hero 右側主城）
+            const drawSkyCastle = (bx, by) => {
+                // 城堡淡藍剪影與高光層次
+                c.fillStyle = '#74a8d8';
+                c.fillRect(bx + 20, by + 60, 140, 130);
+                c.fillRect(bx, by + 95, 44, 95);
+                c.fillRect(bx + 136, by + 85, 48, 105);
+                // 亮面牆體
+                c.fillStyle = '#a2d2ff';
+                c.fillRect(bx + 24, by + 64, 90, 126);
+                c.fillRect(bx + 4, by + 98, 26, 92);
+                c.fillRect(bx + 140, by + 88, 30, 102);
+                // 中央主塔樓與尖頂
+                c.fillStyle = '#bde0fe';
+                c.fillRect(bx + 56, by + 20, 52, 60);
+                c.fillStyle = '#4a7eb5';
+                for (let ty = 0; ty < 36; ty += P) {
+                    const half = Math.floor((36 - ty) * 0.75);
+                    c.fillRect(bx + 82 - half, by - 16 + ty, half * 2, P);
+                }
+                // 左右雙尖塔頂
+                for (let ty = 0; ty < 28; ty += P) {
+                    const half = Math.floor((28 - ty) * 0.7);
+                    c.fillRect(bx + 22 - half, by + 68 + ty, half * 2, P);
+                    c.fillRect(bx + 158 - half, by + 58 + ty, half * 2, P);
+                }
+                // 旗幟與長橋
+                c.fillStyle = '#ffd166';
+                c.fillRect(bx + 80, by - 26, 12, 8);
+                c.fillStyle = '#74a8d8';
+                c.fillRect(bx - 160, by + 165, 220, 16);
+                c.fillStyle = '#bde0fe';
+                c.fillRect(bx - 160, by + 165, 220, 4);
+            };
+            drawSkyCastle(630, 32);
+
+            // 4. 層疊像素岩石懸崖與翡翠草坪平台（左高台、中景高台、右懸崖、前景大道）
+            const drawPixelCliffBlock = (rx, ry, rw, rh, hasGrassTop = true) => {
+                // 深黑像素外框
+                c.fillStyle = '#1b1d24';
+                c.fillRect(rx - P, ry - (hasGrassTop ? 12 : 0), rw + P * 2, rh + (hasGrassTop ? 12 : 0) + P);
+
+                // 岩石立面階梯紋理
+                for (let y = ry; y < ry + rh; y += P) {
+                    for (let x = rx; x < rx + rw; x += P) {
+                        const r = pseudoRandom(x, y, 31);
+                        const shade = (x - rx) > rw * 0.68 ? '#6c584c' : (r < 0.45 ? '#a98467' : (r < 0.8 ? '#8c6d53' : '#c3a995'));
+                        c.fillStyle = shade;
+                        c.fillRect(x, y, P, P);
+                    }
+                }
+                // 岩石裂縫像素線
+                c.fillStyle = '#58473c';
+                for (let x = rx + 24; x < rx + rw - 20; x += 48) {
+                    c.fillRect(x, ry + 12, P, rh - 24);
+                }
+
+                // 頂部厚實翡翠草坪與鋸齒草邊
+                if (hasGrassTop) {
+                    c.fillStyle = '#386641';
+                    c.fillRect(rx - P, ry - 4, rw + P * 2, 12);
+                    c.fillStyle = '#6a994e';
+                    c.fillRect(rx, ry - 12, rw, 12);
+                    c.fillStyle = '#a7c957';
+                    c.fillRect(rx, ry - 12, rw, 6);
+                    // 鋸齒垂落草葉
+                    for (let x = rx + 8; x < rx + rw - 8; x += 16) {
+                        c.fillStyle = '#386641';
+                        c.fillRect(x, ry + 6, 8, 6);
+                        c.fillStyle = '#6a994e';
+                        c.fillRect(x, ry + 4, 8, 4);
+                    }
+                }
+            };
+
+            // 中景遠處懸崖平台
+            drawPixelCliffBlock(330, 270, 270, 140, true);
+            // 右側雲海懸崖平台（參考 Pixel Hero 右側雪鹿與神官高台）
+            drawPixelCliffBlock(690, 250, 270, 160, true);
+            drawPixelCliffBlock(820, 360, 140, 150, true);
+            // 左側高地懸崖平台（參考 Pixel Hero 左側武士高台）
+            drawPixelCliffBlock(0, 220, 310, 220, true);
+
+            // 5. 前景開闊翡翠草地與蜿蜒土黃石板山道
+            for (let y = 390; y < 600; y += P) {
+                for (let x = 0; x < 960; x += P) {
+                    const r = pseudoRandom(x, y, 41);
+                    c.fillStyle = r < 0.45 ? '#6a994e' : (r < 0.82 ? '#80b918' : '#55a630');
+                    c.fillRect(x, y, P, P);
+                }
+            }
+            // 前景蜿蜒泥土冒險小徑
+            for (let y = 394; y < 600; y += P) {
+                const t = (y - 394) / 206;
+                const pathCenter = 220 + t * 340 + Math.sin(t * 4.5) * 65;
+                const halfW = 34 + t * 48;
+                c.fillStyle = '#bc8a5f';
+                c.fillRect(Math.floor((pathCenter - halfW) / P) * P, y, Math.ceil((halfW * 2) / P) * P, P);
+                c.fillStyle = '#e7bc91';
+                c.fillRect(Math.floor((pathCenter - halfW * 0.65) / P) * P, y, Math.ceil((halfW * 1.3) / P) * P, P);
+            }
+
+            // 6. 草地上的紅花、紫花、黃花與小草叢點綴（參考 Pixel Hero 前景花叢）
+            const flowerClusters = [
+                [140, 440], [175, 465], [210, 490], [260, 520], [310, 545],
+                [540, 430], [600, 455], [660, 510], [720, 540], [780, 495],
+                [85, 204], [240, 204], [420, 254], [740, 234]
+            ];
+            flowerClusters.forEach(([fx, fy], i) => {
+                c.fillStyle = '#2b9348';
+                c.fillRect(fx - 4, fy + 4, 16, 6);
+                c.fillStyle = i % 3 === 0 ? '#ff595e' : (i % 3 === 1 ? '#ffca3a' : '#c77dff');
+                c.fillRect(fx, fy, 6, 6);
+                c.fillStyle = '#ffffff';
+                c.fillRect(fx + 2, fy + 2, 2, 2);
+            });
+
+            // 7. 左上方繁茂大樹樹冠與粗壯樹幹（致敬 Pixel Hero 左上角經典像素大樹）
+            const drawGiantPixelTree = (tx, ty) => {
+                // 樹幹黑邊與木紋
+                c.fillStyle = '#1b1d24';
+                c.fillRect(tx + 44, ty + 80, 36, 130);
+                c.fillStyle = '#6f4518';
+                c.fillRect(tx + 48, ty + 80, 28, 128);
+                c.fillStyle = '#a47148';
+                c.fillRect(tx + 52, ty + 80, 10, 128);
+                // 樹根分叉
+                c.fillStyle = '#6f4518';
+                c.fillRect(tx + 34, ty + 194, 56, 14);
+
+                // 多層圓潤像素樹冠（黑邊 + 深綠陰影 + 翠綠主體 + 嫩綠高光）
+                const puffs = [
+                    [tx + 60, ty + 55, 76, 48],
+                    [tx + 120, ty + 68, 64, 42],
+                    [tx + 175, ty + 82, 52, 34],
+                    [tx + 20, ty + 78, 56, 38]
+                ];
+                puffs.forEach(([px, py, rx, ry]) => {
+                    for (let y = -ry - P; y <= ry + P; y += P) {
+                        for (let x = -rx - P; x <= rx + P; x += P) {
+                            const d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+                            const edge = (x * x) / ((rx + P) * (rx + P)) + (y * y) / ((ry + P) * (ry + P));
+                            if (d <= 1.0) {
+                                c.fillStyle = y > ry * 0.25 ? '#2b9348' : (y < -ry * 0.25 ? '#aacc00' : '#55a630');
+                                c.fillRect(px + x, py + y, P, P);
+                            } else if (edge <= 1.0) {
+                                c.fillStyle = '#1b1d24';
+                                c.fillRect(px + x, py + y, P, P);
+                            }
+                        }
+                    }
+                });
+            };
+            drawGiantPixelTree(0, 12);
+
+            // 右側粉色櫻花像素樹（致敬 Pixel Hero 右側粉樹）
+            const drawSakuraTree = (tx, ty) => {
+                c.fillStyle = '#1b1d24';
+                c.fillRect(tx + 18, ty + 24, 12, 26);
+                c.fillStyle = '#6f4518';
+                c.fillRect(tx + 20, ty + 24, 8, 24);
+                for (let y = 0; y < 32; y += P) {
+                    for (let x = 0; x < 48; x += P) {
+                        const nx = (x - 24) / 24;
+                        const ny = (y - 16) / 16;
+                        if (nx * nx + ny * ny <= 1.0) {
+                            c.fillStyle = y < 12 ? '#ffc8dd' : '#ff758f';
+                            c.fillRect(tx + x, ty + y, P, P);
+                        }
+                    }
+                }
+            };
+            drawSakuraTree(855, 198);
+
+            // 8. 精緻黑邊點陣英雄與奇幻生物群像（重點參考 Pixel Hero 多位高辨識度角色）
+            const drawPixelHeroUnit = (hx, hy, cfg) => {
+                // 腳底陰影
+                c.fillStyle = 'rgba(16, 20, 28, 0.45)';
+                c.fillRect(hx + 4, hy + 52, 44, 8);
+
+                // 深黑像素外框輪廓
+                c.fillStyle = '#10141c';
+                c.fillRect(hx + 8, hy + 4, 36, 48);
+
+                // 坐騎或戰靴底座
+                if (cfg.hasMount) {
+                    c.fillStyle = '#10141c';
+                    c.fillRect(hx + 2, hy + 28, 48, 24);
+                    c.fillStyle = cfg.mountColor;
+                    c.fillRect(hx + 6, hy + 30, 40, 16);
+                    // 馬腿
+                    c.fillRect(hx + 8, hy + 44, 6, 8);
+                    c.fillRect(hx + 20, hy + 44, 6, 8);
+                    c.fillRect(hx + 34, hy + 44, 6, 8);
+                    // 馬頭
+                    c.fillStyle = '#10141c';
+                    c.fillRect(hx + 38, hy + 20, 14, 18);
+                    c.fillStyle = cfg.mountColor;
+                    c.fillRect(hx + 40, hy + 22, 10, 14);
+                    c.fillStyle = '#ff595e';
+                    c.fillRect(hx + 46, hy + 25, 3, 3);
+                } else {
+                    c.fillStyle = '#495057';
+                    c.fillRect(hx + 12, hy + 44, 10, 8);
+                    c.fillRect(hx + 30, hy + 44, 10, 8);
+                }
+
+                // 角色身體戰甲/長袍
+                c.fillStyle = cfg.armorColor;
+                c.fillRect(hx + 12, hy + 22, 28, 16);
+                c.fillStyle = cfg.trimColor;
+                c.fillRect(hx + 22, hy + 22, 8, 16);
+
+                // 頭部臉龐與眼睛
+                c.fillStyle = '#ffcdb2';
+                c.fillRect(hx + 14, hy + 10, 24, 13);
+                c.fillStyle = '#10141c';
+                c.fillRect(hx + 18, hy + 15, 4, 4);
+                c.fillRect(hx + 30, hy + 15, 4, 4);
+                if (cfg.beard) {
+                    c.fillStyle = '#adb5bd';
+                    c.fillRect(hx + 16, hy + 20, 20, 6);
+                }
+
+                // 頭飾（王冠 / 武士雙角盔 / 賢者帽 / 騎士羽盔）
+                c.fillStyle = cfg.hatColor;
+                c.fillRect(hx + 12, hy + 4, 28, 7);
+                if (cfg.crown) {
+                    c.fillStyle = '#ffd166';
+                    c.fillRect(hx + 14, hy, 4, 5);
+                    c.fillRect(hx + 24, hy - 2, 4, 7);
+                    c.fillRect(hx + 34, hy, 4, 5);
+                }
+                if (cfg.horns) {
+                    c.fillStyle = '#ffd166';
+                    c.fillRect(hx + 8, hy + 2, 6, 8);
+                    c.fillRect(hx + 38, hy + 2, 6, 8);
+                }
+
+                // 手持武器（金色太陽權杖 / 閃耀武士刀 / 魔法杖）
+                if (cfg.weapon === 'staff') {
+                    c.fillStyle = '#10141c';
+                    c.fillRect(hx + 2, hy + 2, 8, 46);
+                    c.fillStyle = '#ffd166';
+                    c.fillRect(hx + 4, hy + 6, 4, 40);
+                    c.fillRect(hx - 2, hy, 16, 14);
+                    c.fillStyle = '#48cae4';
+                    c.fillRect(hx + 3, hy + 4, 6, 6);
+                } else if (cfg.weapon === 'sword') {
+                    c.fillStyle = '#10141c';
+                    c.fillRect(hx + 26, hy + 26, 32, 8);
+                    c.fillStyle = '#ffffff';
+                    c.fillRect(hx + 32, hy + 28, 24, 4);
+                    c.fillStyle = '#ffd166';
+                    c.fillRect(hx + 28, hy + 23, 4, 14);
+                }
+            };
+
+            // (1) 左側高台：赤甲武士將軍（帶背旗與武士刀）
+            c.fillStyle = '#10141c';
+            c.fillRect(190, 128, 22, 34);
+            c.fillStyle = '#e63946';
+            c.fillRect(192, 130, 18, 22);
+            c.fillStyle = '#ffffff';
+            c.fillRect(196, 134, 4, 4);
+            c.fillRect(202, 140, 4, 4);
+            drawPixelHeroUnit(204, 152, {
+                hasMount: true, mountColor: '#343a40',
+                armorColor: '#e63946', trimColor: '#ffd166',
+                hatColor: '#2b2d42', horns: true, weapon: 'sword'
+            });
+
+            // (2) 左側高台：大賢者・阿爾文（星辰高帽與法杖）
+            drawPixelHeroUnit(118, 174, {
+                hasMount: true, mountColor: '#495057',
+                armorColor: '#2a9d8f', trimColor: '#ffd166',
+                hatColor: '#1d3557', weapon: 'staff'
+            });
+
+            // (3) 中景高台：雙人先鋒騎士
+            drawPixelHeroUnit(368, 206, {
+                hasMount: true, mountColor: '#582f0e',
+                armorColor: '#2b2d42', trimColor: '#ff9f1c',
+                hatColor: '#ff9f1c', weapon: 'sword'
+            });
+            drawPixelHeroUnit(454, 212, {
+                hasMount: true, mountColor: '#7f4f24',
+                armorColor: '#e76f51', trimColor: '#ffd166',
+                hatColor: '#4ea8de', weapon: 'sword'
+            });
+
+            // (4) 右側高台：聖光女祭司與守護騎士
+            drawPixelHeroUnit(722, 188, {
+                hasMount: true, mountColor: '#faedcd',
+                armorColor: '#ffffff', trimColor: '#4ea8de',
+                hatColor: '#ffd166', crown: true, weapon: 'staff'
+            });
+            drawPixelHeroUnit(782, 192, {
+                hasMount: true, mountColor: '#e9edc9',
+                armorColor: '#3a86ff', trimColor: '#ffd166',
+                hatColor: '#ffd166', horns: true, weapon: 'sword'
+            });
+
+            // (5) 前景中央 C 位：翡翠國王騎士（持太陽權杖）與火槍探險家
+            drawPixelHeroUnit(418, 424, {
+                hasMount: true, mountColor: '#9c6644',
+                armorColor: '#1d3557', trimColor: '#ffd166',
+                hatColor: '#ffd166', crown: true, beard: true, weapon: 'staff'
+            });
+            drawPixelHeroUnit(592, 428, {
+                hasMount: true, mountColor: '#7f4f24',
+                armorColor: '#d62828', trimColor: '#ffd166',
+                hatColor: '#1d3557', weapon: 'sword'
+            });
+
+            // (6) 前景草地可愛像素眼鏡蛇與右側神秘白鹿（致敬 Pixel Hero 生態細節）
+            // 綠色小蛇
+            c.fillStyle = '#10141c';
+            c.fillRect(310, 472, 28, 26);
+            c.fillStyle = '#52b788';
+            c.fillRect(314, 476, 16, 18);
+            c.fillRect(312, 488, 24, 8);
+            c.fillStyle = '#ff0055';
+            c.fillRect(334, 480, 6, 3);
+
+            // 右側高台潔白神鹿
+            c.fillStyle = '#10141c';
+            c.fillRect(906, 194, 42, 44);
+            c.fillStyle = '#f8f9fa';
+            c.fillRect(910, 212, 32, 14);
+            c.fillRect(912, 226, 5, 10);
+            c.fillRect(934, 226, 5, 10);
+            c.fillRect(908, 200, 12, 14);
+            c.fillStyle = '#ffd166';
+            c.fillRect(912, 190, 4, 10);
+            c.fillRect(920, 190, 4, 10);
+
+            // 9. 前景左下角深綠灌木剪影框景（增加畫面景深層次）
+            for (let y = 455; y < 600; y += P) {
+                const bushW = Math.floor((y - 455) * 1.45);
+                for (let x = 0; x < bushW; x += P) {
+                    const r = pseudoRandom(x, y, 55);
+                    c.fillStyle = x > bushW - 12 ? '#1b1d24' : (r < 0.5 ? '#1b4332' : '#2d6a4f');
+                    c.fillRect(x, y, P, P);
+                }
+            }
+        }
+
+        /**
+         * 在主畫面上疊加貫穿標題的像素巨劍與閃耀星光（致敬 Empire Game: Pixel Hero 橫劍 Logo）
+         */
+        function renderMainMenuOverlayArt(timestamp) {
+            ctx.drawImage(menuBgCanvas, 0, 0);
+
+            // 1. 標題後方橫向貫穿的像素聖劍（致敬 Empire Game: Pixel Hero Logo 橫劍）
+            const swordY = 98 + Math.sin(timestamp / 510) * 5;
+            const swordStartX = 435;
+
+            ctx.save();
+            // 劍柄圓頭
+            ctx.fillStyle = '#10141c';
+            ctx.fillRect(swordStartX - 16, swordY - 8, 16, 16);
+            ctx.fillStyle = '#ffd166';
+            ctx.fillRect(swordStartX - 12, swordY - 4, 8, 8);
+
+            // 握把
+            ctx.fillStyle = '#10141c';
+            ctx.fillRect(swordStartX, swordY - 6, 28, 12);
+            ctx.fillStyle = '#9b2226';
+            ctx.fillRect(swordStartX + 2, swordY - 3, 24, 6);
+
+            // 十字護手
+            ctx.fillStyle = '#10141c';
+            ctx.fillRect(swordStartX + 28, swordY - 28, 16, 56);
+            ctx.fillStyle = '#ffd166';
+            ctx.fillRect(swordStartX + 32, swordY - 24, 8, 48);
+            ctx.fillStyle = '#fff3b0';
+            ctx.fillRect(swordStartX + 34, swordY - 20, 4, 40);
+
+            // 橫向銀白劍身與劍尖
+            ctx.fillStyle = '#10141c';
+            ctx.fillRect(swordStartX + 44, swordY - 12, 445, 24);
+            ctx.fillRect(swordStartX + 489, swordY - 8, 12, 16);
+            ctx.fillRect(swordStartX + 501, swordY - 4, 12, 8);
+
+            ctx.fillStyle = '#e0fbfc';
+            ctx.fillRect(swordStartX + 44, swordY - 8, 440, 8);
+            ctx.fillStyle = '#90e0ef';
+            ctx.fillRect(swordStartX + 44, swordY, 440, 8);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(swordStartX + 485, swordY - 4, 12, 8);
+            ctx.restore();
+
+            // 2. 閃爍四角十字像素星光與飄落櫻花/葉片
+            const sparkles = [
+                [385, 42], [442, 442], [735, 185], [215, 148], [625, 425]
+            ];
+            sparkles.forEach(([sx, sy], idx) => {
+                const sPhase = Math.sin(timestamp / 220 + idx * 1.4);
+                if (sPhase > -0.2) {
+                    const arm = sPhase > 0.45 ? 10 : 6;
+                    ctx.fillStyle = '#fff3b0';
+                    ctx.fillRect(sx - 2, sy - arm, 4, arm * 2);
+                    ctx.fillRect(sx - arm, sy - 2, arm * 2, 4);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(sx - 2, sy - 2, 4, 4);
+                }
+            });
+
+            for (let i = 0; i < 14; i++) {
+                const px = ((i * 73 + timestamp * 0.04) % 980) - 10;
+                const py = ((i * 47 + timestamp * 0.022 + Math.sin(timestamp * 0.003 + i) * 16) % 520);
+                ctx.fillStyle = i % 2 === 0 ? '#ffb3c1' : '#aacc00';
+                ctx.fillRect(px, py, 6, 4);
+            }
+        }
+
+        /**
+         * 離屏逐像素繪製七種不同生態系的精美像素底圖（融入無名騎士團明亮清新色調與立體邊緣層次）
+         */
+        function generatePixelArtBackground(themeKey = 'forest') {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const tile = mapGrid[r][c];
+                    const sx = c * TILE_SIZE;
+                    const sy = r * TILE_SIZE;
+                    const topWalkable = r > 0 && mapGrid[r - 1][c] !== 2;
+
+                    if (themeKey === 'hell') {
+                        if (tile === 0 || tile === 5) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#2b1216', '#36161b', '#220d10', '#421920']);
+                            if (tile === 5) drawPixelTree(bgCtx, sx, sy, 'hell');
+                        } else if (tile === 1) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#5c2b29', '#6e3532', '#4a211f', '#7a3b38']);
+                        } else if (tile === 2) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#1a141c', '#261d29', '#120d14', '#332638']);
+                            if (topWalkable) {
+                                bgCtx.fillStyle = '#4a2536';
+                                bgCtx.fillRect(sx, sy, TILE_SIZE, 6);
+                            }
+                            bgCtx.strokeStyle = '#ff4d00';
+                            bgCtx.lineWidth = 1;
+                            bgCtx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                        } else if (tile === 3) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#d00000', '#e85d04', '#f48c06', '#9d0208']);
+                        } else if (tile === 4) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#3d1820', '#59202c', '#2b1016']);
+                            bgCtx.fillStyle = '#ff595e';
+                            bgCtx.fillRect(sx + 6, sy + 6, 20, 20);
+                            bgCtx.fillStyle = '#ffca3a';
+                            bgCtx.fillRect(sx + 11, sy + 11, 10, 10);
+                        } else if (tile === 6) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#d00000', '#9d0208']);
+                            bgCtx.fillStyle = '#d8d2c5';
+                            bgCtx.fillRect(sx + 2, sy + 4, TILE_SIZE - 4, TILE_SIZE - 8);
+                        }
+                    } else if (themeKey === 'heaven') {
+                        if (tile === 0 || tile === 5) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#e0fbfc', '#edf6f9', '#d8f3dc', '#ffffff']);
+                            if (tile === 5) drawPixelTree(bgCtx, sx, sy, 'heaven');
+                        } else if (tile === 1) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#ffd166', '#ffe875', '#f4a261', '#fff3b0']);
+                        } else if (tile === 2) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#bde0fe', '#a2d2ff', '#cdb4db', '#ffffff']);
+                            bgCtx.strokeStyle = '#ffd166';
+                            bgCtx.lineWidth = 2;
+                            bgCtx.strokeRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        } else if (tile === 3) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#48cae4', '#90e0ef', '#00b4d8', '#caf0f8']);
+                        } else if (tile === 4) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#fff3b0', '#ffd166', '#ffffff']);
+                            bgCtx.fillStyle = '#ffbe0b';
+                            bgCtx.fillRect(sx + 4, sy + 4, 24, 24);
+                            bgCtx.fillStyle = '#ffffff';
+                            bgCtx.fillRect(sx + 9, sy + 9, 14, 14);
+                        } else if (tile === 6) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#90e0ef', '#caf0f8']);
+                            bgCtx.fillStyle = '#ffd166';
+                            bgCtx.fillRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                            bgCtx.fillStyle = '#ffffff';
+                            bgCtx.fillRect(sx + 5, sy + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                        }
+                    } else if (themeKey === 'snow') {
+                        if (tile === 0 || tile === 5) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#d8f3ff', '#e8f8ff', '#c2e9fb', '#ffffff']);
+                            if (tile === 5) drawPixelTree(bgCtx, sx, sy, 'snow');
+                        } else if (tile === 1) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#8d99ae', '#a3b1c6', '#748299', '#b8c4d9']);
+                        } else if (tile === 2) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#4a6fa5', '#5c85bd', '#385785', '#769fd4']);
+                            if (topWalkable) {
+                                bgCtx.fillStyle = '#caf0f8';
+                                bgCtx.fillRect(sx, sy, TILE_SIZE, 6);
+                            }
+                        } else if (tile === 3) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#0077b6', '#0096c7', '#023e8a', '#48cae4']);
+                        } else if (tile === 4) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#bde0fe', '#90e0ef', '#caf0f8']);
+                            bgCtx.fillStyle = '#48cae4';
+                            bgCtx.fillRect(sx + 6, sy + 6, 20, 20);
+                        } else if (tile === 6) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#0077b6', '#0096c7']);
+                            bgCtx.fillStyle = '#9c6644';
+                            bgCtx.fillRect(sx + 2, sy + 3, TILE_SIZE - 4, TILE_SIZE - 6);
+                        }
+                    } else if (themeKey === 'desert') {
+                        if (tile === 0 || tile === 5) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#f4a261', '#f6bd60', '#e9c46a', '#ffcb77']);
+                            if (tile === 5) drawPixelTree(bgCtx, sx, sy, 'desert');
+                        } else if (tile === 1) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#d4a373', '#faedcd', '#ccd5ae', '#e6ccb2']);
+                        } else if (tile === 2) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#bc6c25', '#dda15e', '#9c5218', '#b07d62']);
+                            if (topWalkable) {
+                                bgCtx.fillStyle = '#faedcd';
+                                bgCtx.fillRect(sx, sy, TILE_SIZE, 6);
+                            }
+                        } else if (tile === 3) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#2ec4b6', '#40916c', '#218380', '#52b788']);
+                        } else if (tile === 4) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#ffb703', '#fb8500', '#ffd166']);
+                            bgCtx.fillStyle = '#e63946';
+                            bgCtx.fillRect(sx + 8, sy + 8, 16, 16);
+                        } else if (tile === 6) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#2a9d8f', '#218380']);
+                            bgCtx.fillStyle = '#b08968';
+                            bgCtx.fillRect(sx + 2, sy + 3, TILE_SIZE - 4, TILE_SIZE - 6);
+                        }
+                    } else if (themeKey === 'village') {
+                        if (tile === 0 || tile === 5) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#7ac74f', '#8cd858', '#65b33e', '#99d98c']);
+                            if (tile === 5) drawPixelTree(bgCtx, sx, sy, 'village');
+                        } else if (tile === 1) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#adb5bd', '#ced4da', '#8d99ae', '#dee2e6']);
+                        } else if (tile === 2) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#bc4749', '#a4161a', '#800f2f', '#c9184a']);
+                            if (topWalkable) {
+                                bgCtx.fillStyle = '#ff8fa3';
+                                bgCtx.fillRect(sx, sy, TILE_SIZE, 6);
+                            }
+                            bgCtx.strokeStyle = '#f4f1de';
+                            bgCtx.lineWidth = 1;
+                            bgCtx.strokeRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        } else if (tile === 3) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#2ec4b6', '#4ea8de', '#277da1', '#90e0ef']);
+                        } else if (tile === 4) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#ffd166', '#f4a261', '#e9c46a']);
+                            bgCtx.fillStyle = '#4ea8de';
+                            bgCtx.fillRect(sx + 8, sy + 8, 16, 16);
+                        } else if (tile === 6) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#3a86ff', '#277da1']);
+                            bgCtx.fillStyle = '#9c6644';
+                            bgCtx.fillRect(sx + 2, sy + 3, TILE_SIZE - 4, TILE_SIZE - 6);
+                        }
+                    } else if (themeKey === 'castle') {
+                        if (tile === 0 || tile === 5) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#5c677d', '#6c757d', '#495057', '#7d8597']);
+                            if (tile === 5) drawPixelTree(bgCtx, sx, sy, 'castle');
+                        } else if (tile === 1) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#9b2226', '#ae2012', '#bb3e03', '#7f1d1d']);
+                            bgCtx.fillStyle = '#ffd166';
+                            bgCtx.fillRect(sx, sy, 2, TILE_SIZE);
+                            bgCtx.fillRect(sx + TILE_SIZE - 2, sy, 2, TILE_SIZE);
+                        } else if (tile === 2) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#2b2d42', '#343a40', '#1b263b', '#415a77']);
+                            if (topWalkable) {
+                                bgCtx.fillStyle = '#8d99ae';
+                                bgCtx.fillRect(sx, sy, TILE_SIZE, 6);
+                            }
+                            bgCtx.strokeStyle = '#adb5bd';
+                            bgCtx.lineWidth = 1;
+                            bgCtx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                        } else if (tile === 3) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#1d3557', '#274c77', '#14213d', '#3a6ea5']);
+                        } else if (tile === 4) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#ffd166', '#ffb703', '#fb8500']);
+                            bgCtx.fillStyle = '#9b2226';
+                            bgCtx.fillRect(sx + 7, sy + 7, 18, 18);
+                        } else if (tile === 6) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#1d3557', '#274c77']);
+                            bgCtx.fillStyle = '#7f4f24';
+                            bgCtx.fillRect(sx + 2, sy + 3, TILE_SIZE - 4, TILE_SIZE - 6);
+                        }
+                    } else {
+                        // forest 迷霧森林遺跡（參考無名騎士團清新翡翠草地與金黃石板小徑）
+                        if (tile === 0 || tile === 5) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#58b346', '#6cc852', '#4c9e3c', '#7ed962']);
+                            if (tile === 5) drawPixelTree(bgCtx, sx, sy, 'forest');
+                        } else if (tile === 1) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#d4a373', '#e6ccb2', '#c29b7a', '#faedcd']);
+                        } else if (tile === 2) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#4a5568', '#5a677d', '#3b4454', '#6b7991']);
+                            if (topWalkable) {
+                                bgCtx.fillStyle = '#80ed99';
+                                bgCtx.fillRect(sx, sy, TILE_SIZE, 6);
+                            }
+                            bgCtx.strokeStyle = '#2d3748';
+                            bgCtx.lineWidth = 1;
+                            bgCtx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                        } else if (tile === 3) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#2ec4b6', '#38b6ff', '#219ebc', '#8ecae6']);
+                        } else if (tile === 4) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#8d99ae', '#adb5bd', '#6c757d']);
+                            bgCtx.fillStyle = '#ffd166';
+                            bgCtx.fillRect(sx + 6, sy + 6, 20, 20);
+                            bgCtx.fillStyle = '#2ec4b6';
+                            bgCtx.fillRect(sx + 11, sy + 11, 10, 10);
+                        } else if (tile === 6) {
+                            drawTileDetail(bgCtx, sx, sy, 4, ['#2ec4b6', '#219ebc']);
+                            bgCtx.fillStyle = '#9c6644';
+                            bgCtx.fillRect(sx + 2, sy + 3, TILE_SIZE - 4, TILE_SIZE - 6);
+                        }
+                    }
+                }
+            }
+        }
+
+        function isTileWalkable(col, row) {
+            if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
+            const tile = mapGrid[row][col];
+            return tile !== 2 && tile !== 3 && tile !== 5;
+        }
+
+        function canMoveTo(nx, ny) {
+            const padX = 3;
+            const padY = 4;
+            const left = nx + padX;
+            const right = nx + player.width - padX;
+            const top = ny + padY;
+            const bottom = ny + player.height - 2;
+
+            const corners = [
+                [Math.floor(left / TILE_SIZE), Math.floor(top / TILE_SIZE)],
+                [Math.floor(right / TILE_SIZE), Math.floor(top / TILE_SIZE)],
+                [Math.floor(left / TILE_SIZE), Math.floor(bottom / TILE_SIZE)],
+                [Math.floor(right / TILE_SIZE), Math.floor(bottom / TILE_SIZE)]
+            ];
+            return corners.every(([c, r]) => isTileWalkable(c, r));
+        }
+
+        function canMonsterMoveTo(nx, ny, w, h) {
+            const pad = 2;
+            const corners = [
+                [Math.floor((nx + pad) / TILE_SIZE), Math.floor((ny + pad) / TILE_SIZE)],
+                [Math.floor((nx + w - pad) / TILE_SIZE), Math.floor((ny + pad) / TILE_SIZE)],
+                [Math.floor((nx + pad) / TILE_SIZE), Math.floor((ny + h - pad) / TILE_SIZE)],
+                [Math.floor((nx + w - pad) / TILE_SIZE), Math.floor((ny + h - pad) / TILE_SIZE)]
+            ];
+            return corners.every(([c, r]) => isTileWalkable(c, r));
+        }
+
+        /**
+         * 廣度優先搜尋 (BFS) 連通性自動校準：保證所有寶箱、武器、繃帶與石碑皆位於角色可到達的陸地上
+         */
+        function validateAndFixReachability(spawnCol, spawnRow) {
+            const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+            const reachableTiles = [];
+            const queue = [{ c: spawnCol, r: spawnRow }];
+            visited[spawnRow][spawnCol] = true;
+
+            while (queue.length > 0) {
+                const { c, r } = queue.shift();
+                reachableTiles.push({ c, r });
+                const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+                for (const [dc, dr] of dirs) {
+                    const nc = c + dc;
+                    const nr = r + dr;
+                    if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS && !visited[nr][nc] && isTileWalkable(nc, nr)) {
+                        visited[nr][nc] = true;
+                        queue.push({ c: nc, r: nr });
+                    }
+                }
+            }
+
+            const occupiedKeys = new Set([`${spawnCol},${spawnRow}`]);
+
+            const findNearestReachable = (targetCol, targetRow, avoidOccupied = false) => {
+                const isFree = (c, r) => !avoidOccupied || !occupiedKeys.has(`${c},${r}`);
+                if (targetCol >= 0 && targetCol < COLS && targetRow >= 0 && targetRow < ROWS && visited[targetRow][targetCol] && isFree(targetCol, targetRow)) {
+                    return { c: targetCol, r: targetRow };
+                }
+                let best = null;
+                let minDist = Infinity;
+                for (const tile of reachableTiles) {
+                    if (!isFree(tile.c, tile.r)) continue;
+                    const dist = Math.hypot(tile.c - targetCol, tile.r - targetRow);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        best = tile;
+                    }
+                }
+                if (!best) best = reachableTiles[0] || { c: spawnCol, r: spawnRow };
+                return best;
+            };
+
+            chests.forEach(ch => {
+                const col = Math.floor((ch.x + 12) / TILE_SIZE);
+                const row = Math.floor((ch.y + 12) / TILE_SIZE);
+                const fixed = findNearestReachable(col, row, true);
+                occupiedKeys.add(`${fixed.c},${fixed.r}`);
+                ch.x = fixed.c * TILE_SIZE + 4;
+                ch.y = fixed.r * TILE_SIZE + 4;
+            });
+
+            if (weaponPickup) {
+                const col = Math.floor((weaponPickup.x + 12) / TILE_SIZE);
+                const row = Math.floor((weaponPickup.y + 12) / TILE_SIZE);
+                const fixed = findNearestReachable(col, row, true);
+                occupiedKeys.add(`${fixed.c},${fixed.r}`);
+                weaponPickup.x = fixed.c * TILE_SIZE + 4;
+                weaponPickup.y = fixed.r * TILE_SIZE + 4;
+            }
+
+            bandages.forEach(b => {
+                const col = Math.floor((b.x + 12) / TILE_SIZE);
+                const row = Math.floor((b.y + 12) / TILE_SIZE);
+                const fixed = findNearestReachable(col, row, true);
+                occupiedKeys.add(`${fixed.c},${fixed.r}`);
+                b.x = fixed.c * TILE_SIZE + 4;
+                b.y = fixed.r * TILE_SIZE + 4;
+            });
+
+            signs.forEach(s => {
+                const col = Math.floor((s.x + 12) / TILE_SIZE);
+                const row = Math.floor((s.y + 12) / TILE_SIZE);
+                const fixed = findNearestReachable(col, row, true);
+                occupiedKeys.add(`${fixed.c},${fixed.r}`);
+                s.x = fixed.c * TILE_SIZE + 4;
+                s.y = fixed.r * TILE_SIZE + 4;
+            });
+
+            monsters.forEach(m => {
+                const col = Math.floor((m.x + 12) / TILE_SIZE);
+                const row = Math.floor((m.y + 12) / TILE_SIZE);
+                const fixed = findNearestReachable(col, row, false);
+                m.x = fixed.c * TILE_SIZE + 4;
+                m.y = fixed.r * TILE_SIZE + 4;
+            });
+        }
+
+        function updateHudDisplay() {
+            const fullHearts = '♥'.repeat(Math.max(0, player.hp));
+            const emptyHearts = '♡'.repeat(Math.max(0, player.maxHp - player.hp));
+            hpDisplayEl.textContent = fullHearts + emptyHearts;
+
+            const wInfo = WEAPONS[player.weapon] || WEAPONS.default;
+            weaponDisplayEl.textContent = `${wInfo.icon} ${wInfo.name}`;
+            weaponDisplayEl.style.borderColor = wInfo.color;
+            weaponDisplayEl.style.color = wInfo.color;
+
+            const opened = chests.filter(c => c.opened).length;
+            gemCountEl.textContent = opened;
+            gemTotalEl.textContent = chests.length;
+        }
+
+        function spawnFloatingText(x, y, text, color) {
+            floatingTexts.push({ x, y, text, color, life: 48, maxLife: 48 });
+        }
+
+        function spawnSparkleParticles(cx, cy, color, count = 14) {
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+                const speed = 1.2 + Math.random() * 2.5;
+                particles.push({
+                    x: cx,
+                    y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 3 + Math.floor(Math.random() * 4),
+                    color: color,
+                    life: 25 + Math.floor(Math.random() * 20),
+                    maxLife: 45
+                });
+            }
+        }
+
+        function renderCurrentDialoguePage() {
+            if (isOnMainMenu || dialogueQueue.length === 0) {
+                hideDialogue();
+                return;
+            }
+            const currentText = dialogueQueue[0];
+            const remaining = dialogueQueue.length - 1;
+            dialogueHeading.textContent = activeDialogueTitle;
+            dialogueText.textContent = currentText;
+            if (dialogueHint) {
+                dialogueHint.textContent = remaining > 0
+                    ? `[Space 下一段 (${remaining})]`
+                    : `[Space / 點擊關閉]`;
+            }
+            dialogueBox.style.display = 'block';
+
+            if (dialogueTimer) clearTimeout(dialogueTimer);
+            if (activeDialogueAutoMs > 0) {
+                dialogueTimer = setTimeout(() => {
+                    advanceDialogue();
+                }, activeDialogueAutoMs);
+            }
+        }
+
+        function showDialogue(title, textOrPages, autoHideMs = 4500) {
+            // 處於主畫面時絕不顯示遊戲內劇情對話框
+            if (isOnMainMenu) {
+                hideDialogue();
+                return;
+            }
+            activeDialogueTitle = title;
+            activeDialogueAutoMs = autoHideMs;
+            dialogueQueue = Array.isArray(textOrPages) ? [...textOrPages] : [textOrPages];
+            renderCurrentDialoguePage();
+        }
+
+        function advanceDialogue() {
+            if (dialogueQueue.length > 1) {
+                dialogueQueue.shift();
+                renderCurrentDialoguePage();
+            } else {
+                hideDialogue();
+            }
+        }
+
+        function hideDialogue() {
+            dialogueQueue = [];
+            dialogueBox.style.display = 'none';
+            if (dialogueTimer) {
+                clearTimeout(dialogueTimer);
+                dialogueTimer = null;
+            }
+        }
+
+        function spawnBiomeMonsters(biomeKey) {
+            const configs = {
+                forest: [
+                    { col: 10, row: 4, species: 'sabertooth', name: '劍齒虎', type: 'claw', hp: 5, color: '#f77f00', speed: 1.25, cooldown: 85 },
+                    { col: 22, row: 5, species: 'sabertooth', name: '劍齒虎', type: 'spread', hp: 4, color: '#fcbf49', speed: 1.2, cooldown: 90 },
+                    { col: 15, row: 11, species: 'sabertooth', name: '暗影虎王', type: 'claw', hp: 6, color: '#e76f51', speed: 1.15, cooldown: 75 },
+                    { col: 6, row: 14, species: 'sabertooth', name: '劍齒虎', type: 'spread', hp: 4, color: '#fcbf49', speed: 1.2, cooldown: 95 },
+                    { col: 24, row: 14, species: 'sabertooth', name: '劍齒虎', type: 'claw', hp: 5, color: '#f77f00', speed: 1.25, cooldown: 85 }
+                ],
+                snow: [
+                    { col: 7, row: 2, species: 'yeti', name: '冰霜雪怪', type: 'ring', hp: 5, color: '#48cae4', speed: 0.9, cooldown: 105 },
+                    { col: 22, row: 3, species: 'yeti', name: '冰霜雪怪', type: 'spread', hp: 5, color: '#90e0ef', speed: 0.95, cooldown: 90 },
+                    { col: 16, row: 9, species: 'yeti', name: '極地雪怪王', type: 'ring', hp: 6, color: '#00b4d8', speed: 0.85, cooldown: 95 },
+                    { col: 8, row: 15, species: 'yeti', name: '冰霜雪怪', type: 'spread', hp: 5, color: '#90e0ef', speed: 0.95, cooldown: 90 },
+                    { col: 24, row: 15, species: 'yeti', name: '冰霜雪怪', type: 'ring', hp: 5, color: '#48cae4', speed: 0.9, cooldown: 105 }
+                ],
+                desert: [
+                    { col: 5, row: 2, species: 'scorpion', name: '劇毒沙蠍', type: 'spiral', hp: 5, color: '#9b5de5', speed: 1.1, cooldown: 26 },
+                    { col: 24, row: 2, species: 'scorpion', name: '劇毒沙蠍', type: 'spread', hp: 5, color: '#f15bb5', speed: 1.1, cooldown: 85 },
+                    { col: 15, row: 5, species: 'scorpion', name: '黃金蠍王', type: 'spiral', hp: 6, color: '#ffb703', speed: 0.95, cooldown: 22 },
+                    { col: 7, row: 11, species: 'scorpion', name: '劇毒沙蠍', type: 'spread', hp: 5, color: '#f15bb5', speed: 1.1, cooldown: 85 },
+                    { col: 22, row: 11, species: 'scorpion', name: '劇毒沙蠍', type: 'spiral', hp: 5, color: '#9b5de5', speed: 1.1, cooldown: 26 }
+                ],
+                village: [
+                    { col: 6, row: 6, species: 'slime', name: '皇冠史萊姆', type: 'ring', hp: 5, color: '#3a86ff', speed: 1.0, cooldown: 100 },
+                    { col: 22, row: 6, species: 'slime', name: '皇冠史萊姆', type: 'spread', hp: 5, color: '#ff006e', speed: 1.05, cooldown: 88 },
+                    { col: 14, row: 6, species: 'slime', name: '史萊姆大王', type: 'ring', hp: 6, color: '#8338ec', speed: 0.9, cooldown: 95 },
+                    { col: 6, row: 12, species: 'slime', name: '皇冠史萊姆', type: 'spread', hp: 5, color: '#ff006e', speed: 1.05, cooldown: 88 },
+                    { col: 22, row: 12, species: 'slime', name: '皇冠史萊姆', type: 'ring', hp: 5, color: '#3a86ff', speed: 1.0, cooldown: 100 }
+                ],
+                castle: [
+                    { col: 6, row: 3, species: 'knight', name: '墮落黑騎士', type: 'cross', hp: 6, color: '#e63946', speed: 0.95, cooldown: 92 },
+                    { col: 22, row: 3, species: 'knight', name: '墮落黑騎士', type: 'cross', hp: 6, color: '#e63946', speed: 0.95, cooldown: 92 },
+                    { col: 14, row: 6, species: 'knight', name: '皇家禁衛長', type: 'spiral', hp: 7, color: '#ffd166', speed: 0.85, cooldown: 24 },
+                    { col: 8, row: 14, species: 'knight', name: '墮落黑騎士', type: 'spread', hp: 6, color: '#fb8500', speed: 1.05, cooldown: 85 },
+                    { col: 20, row: 14, species: 'knight', name: '墮落黑騎士', type: 'cross', hp: 6, color: '#e63946', speed: 0.95, cooldown: 92 }
+                ]
+            };
+
+            const list = configs[biomeKey] || configs.forest;
+            monsters = list.map((m, idx) => ({
+                id: idx + 1,
+                species: m.species,
+                name: m.name,
+                x: m.col * TILE_SIZE + 4,
+                y: m.row * TILE_SIZE + 4,
+                width: 24,
+                height: 24,
+                type: m.type,
+                hp: m.hp,
+                maxHp: m.hp,
+                color: m.color,
+                speed: m.speed,
+                shootCooldown: m.cooldown,
+                shootTimer: 40 + idx * 18,
+                spiralAngle: 0,
+                moveAngle: Math.random() * Math.PI * 2,
+                moveTimer: 50,
+                hitFlash: 0,
+                burnTimer: 0,
+                poisonTimer: 0,
+                freezeTimer: 0,
+                shockTimer: 0,
+                dotTick: 0
+            }));
+        }
+
+        function spawnHellMonsters() {
+            const list = [
+                { col: 10, row: 4, species: 'demon', name: '熔岩炎魔', type: 'cross', hp: 6, color: '#ff4d00', speed: 1.15, cooldown: 82 },
+                { col: 20, row: 4, species: 'demon', name: '熔岩炎魔', type: 'spread', hp: 6, color: '#ff4d00', speed: 1.15, cooldown: 82 },
+                { col: 15, row: 7, species: 'demon', name: '煉獄魔王', type: 'spiral', hp: 8, color: '#ff0055', speed: 0.85, cooldown: 22 },
+                { col: 7, row: 13, species: 'demon', name: '熔岩炎魔', type: 'ring', hp: 6, color: '#ff9e00', speed: 1.05, cooldown: 95 },
+                { col: 22, row: 13, species: 'demon', name: '熔岩炎魔', type: 'cross', hp: 6, color: '#ff9e00', speed: 1.05, cooldown: 85 }
+            ];
+            monsters = list.map((m, idx) => ({
+                id: 100 + idx,
+                species: m.species,
+                name: m.name,
+                x: m.col * TILE_SIZE + 4,
+                y: m.row * TILE_SIZE + 4,
+                width: 24,
+                height: 24,
+                type: m.type,
+                hp: m.hp,
+                maxHp: m.hp,
+                color: m.color,
+                speed: m.speed,
+                shootCooldown: m.cooldown,
+                shootTimer: 35 + idx * 15,
+                spiralAngle: 0,
+                moveAngle: Math.random() * Math.PI * 2,
+                moveTimer: 45,
+                hitFlash: 0,
+                burnTimer: 0,
+                poisonTimer: 0,
+                freezeTimer: 0,
+                shockTimer: 0,
+                dotTick: 0
+            }));
+        }
+
+        /**
+         * 進入序章主線劇情房間（開局起點：無迷霧、無怪物，了解主線故事後走進傳送門出發）
+         */
+        function enterPrologueRoom() {
+            if (pendingHellTimer) { clearTimeout(pendingHellTimer); pendingHellTimer = null; }
+            if (pendingBiomeTimer) { clearTimeout(pendingBiomeTimer); pendingBiomeTimer = null; }
+            if (pendingPortalTimer) { clearTimeout(pendingPortalTimer); pendingPortalTimer = null; }
+
+            currentRealm = 'prologue';
+            gameShell.classList.remove('hell-theme', 'heaven-theme');
+            gemCounterBox.classList.remove('hell-counter', 'heaven-counter');
+            worldTitleEl.textContent = '📜 序章・翡翠王國星殿大廳';
+
+            mapGrid = PROLOGUE_RAW_MAP.map(row => [...row]);
+            // 序章房間全亮無迷霧
+            fogGrid = Array.from({ length: ROWS }, () => Array(COLS).fill(true));
+
+            chests = [];
+            bandages = [];
+            weaponPickup = null;
+            monsters = [];
+            bullets = [];
+            // 初始化序章星殿北方的星界傳送門
+            portalGate = {
+                x: 15 * TILE_SIZE,
+                y: 4 * TILE_SIZE + 16,
+                radius: 26,
+                activated: false
+            };
+            // 房間內的劇情 NPC 與石碑（分段呈現為何必須蒐集寶石的主線故事，按 Space 閱讀下一段）
+            signs = [
+                {
+                    x: 12 * TILE_SIZE + 4,
+                    y: 7 * TILE_SIZE + 4,
+                    isSage: true,
+                    title: '🧙‍♂️ 大賢者・阿爾文（主線劇情）',
+                    text: [
+                        '「年輕的騎士，翡翠王國的【世界星核】已因暗影魔潮而碎裂，大地正逐漸失去光明！」',
+                        '「星核化作 25 顆元素寶石，散落於森林、雪山、沙漠、村莊與城堡五大秘境之中。」',
+                        '「唯有集齊五大秘境的全部寶石並重鑄星核，才能阻止大陸沉入永夜！準備好就走入北方的【星界傳送門】吧！」'
+                    ]
+                },
+                {
+                    x: 17 * TILE_SIZE + 4,
+                    y: 10 * TILE_SIZE + 4,
+                    title: '🛡️ 遠征騎士團手札',
+                    text: [
+                        '【冒險指引 1/2】每個秘境皆藏有 5 顆元素寶石與 1 把專屬傳說武器，按滑鼠左鍵即可攻擊與劈散敵方彈幕！',
+                        '【冒險指引 2/2】若在戰鬥中生命值歸零，靈魂會墜入煉獄深淵，只要蒐集齊 3 顆血魂石即可重返人間繼續冒險。'
+                    ]
+                }
+            ];
+
+            keys.w = keys.a = keys.s = keys.d = false;
+            player.isMoving = false;
+            player.hp = player.maxHp;
+            player.invulnTimer = 0;
+            player.x = 14 * TILE_SIZE + 4;
+            player.y = 13 * TILE_SIZE + 4;
+            player.dir = 'up';
+
+            validateAndFixReachability(14, 13);
+            generatePixelArtBackground('castle');
+            updateHudDisplay();
+            gemCountEl.textContent = '0';
+            gemTotalEl.textContent = '25';
+
+            if (!isOnMainMenu) {
+                showDialogue(
+                    '📜 主線序章：星核碎裂的危機',
+                    [
+                        '歡迎來到翡翠王國星殿！請使用 W / A / S / D 走向前方的【大賢者・阿爾文】了解主線使命。',
+                        '閱讀完畢後，走入北方旋轉發光的【星界傳送門】即可出發前往五大秘境！（按 Space 關閉提示）'
+                    ],
+                    0
+                );
+            }
+        }
+
+        /**
+         * 載入指定普通區域生態系
+         */
+        function loadOverworldBiome(biomeKey, announce = true) {
+            if (pendingHellTimer) { clearTimeout(pendingHellTimer); pendingHellTimer = null; }
+            if (pendingBiomeTimer) { clearTimeout(pendingBiomeTimer); pendingBiomeTimer = null; }
+            if (pendingPortalTimer) { clearTimeout(pendingPortalTimer); pendingPortalTimer = null; }
+
+            currentRealm = 'overworld';
+            currentBiomeKey = biomeKey;
+            portalGate = null;
+            const biome = OVERWORLD_BIOMES[biomeKey];
+
+            gameShell.classList.remove('hell-theme', 'heaven-theme');
+            gemCounterBox.classList.remove('hell-counter', 'heaven-counter');
+            worldTitleEl.textContent = `${biome.icon} ${biome.name} (${completedBiomes.size}/5 區)`;
+
+            mapGrid = biome.map.map(row => [...row]);
+            fogGrid = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+
+            chests = biome.chests.map((c, i) => ({
+                id: i + 1,
+                x: c.col * TILE_SIZE + 4,
+                y: c.row * TILE_SIZE + 4,
+                opened: false,
+                gemName: c.gemName,
+                color: c.color
+            }));
+
+            bandages = biome.bandages.map((b, i) => ({
+                id: i + 1,
+                x: b.col * TILE_SIZE + 4,
+                y: b.row * TILE_SIZE + 4,
+                collected: false
+            }));
+
+            const wDef = WEAPONS[biome.weapon.id];
+            weaponPickup = {
+                weaponId: wDef.id,
+                x: biome.weapon.col * TILE_SIZE + 4,
+                y: biome.weapon.row * TILE_SIZE + 4,
+                collected: false
+            };
+
+            signs = biome.signs.map(s => ({
+                x: s.col * TILE_SIZE + 4,
+                y: s.row * TILE_SIZE + 4,
+                title: s.title,
+                text: s.text
+            }));
+
+            bullets = [];
+            slashes = [];
+            particles = [];
+            floatingTexts = [];
+            keys.w = keys.a = keys.s = keys.d = false;
+            player.isMoving = false;
+            player.x = biome.spawn.col * TILE_SIZE + 4;
+            player.y = biome.spawn.row * TILE_SIZE + 4;
+            player.dir = 'down';
+            player.invulnTimer = 210; // 剛進入地圖 3.5 秒內不可被攻擊
+
+            spawnBiomeMonsters(biomeKey);
+            validateAndFixReachability(biome.spawn.col, biome.spawn.row);
+            generatePixelArtBackground(biomeKey);
+            updateFogOfWar();
+            updateHudDisplay();
+
+            if (announce) {
+                showDialogue(`🗺️ 抵達新區域：${biome.name}`, `已傳送至【${biome.name}】！快去尋找專屬武器【${wDef.name}】並集齊 5 顆區域寶石吧！`);
+            }
+        }
+
+        /**
+         * 進入地獄煉獄地圖：生命值歸 0 時觸發，需集齊 3 顆復活魂石重返人間
+         */
+        function enterHellRealm() {
+            if (currentRealm === 'hell' || pendingHellTimer) return;
+
+            savedOverworldState = {
+                biomeKey: currentBiomeKey,
+                completedBiomes: new Set(completedBiomes),
+                fogGrid: fogGrid.map(row => [...row]),
+                chests: chests.map(c => ({ ...c })),
+                bandages: bandages.map(b => ({ ...b })),
+                weaponPickup: weaponPickup ? { ...weaponPickup } : null,
+                signs: signs.map(s => ({ ...s }))
+            };
+
+            currentRealm = 'hell';
+            gameShell.classList.remove('heaven-theme');
+            gameShell.classList.add('hell-theme');
+            gemCounterBox.classList.remove('heaven-counter');
+            gemCounterBox.classList.add('hell-counter');
+            worldTitleEl.textContent = '🔥 煉獄深淵・靈魂試煉';
+
+            mapGrid = HELL_RAW_MAP.map(row => [...row]);
+            fogGrid = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+
+            chests = [
+                { id: 901, x: 2 * TILE_SIZE + 4, y: 16 * TILE_SIZE + 4, opened: false, gemName: '煉獄血魂石 I', color: '#ff595e' },
+                { id: 902, x: 15 * TILE_SIZE + 4, y: 7 * TILE_SIZE + 4, opened: false, gemName: '煉獄血魂石 II', color: '#ffca3a' },
+                { id: 903, x: 28 * TILE_SIZE + 4, y: 17 * TILE_SIZE + 4, opened: false, gemName: '煉獄血魂石 III', color: '#ff924c' }
+            ];
+
+            bandages = [
+                { id: 911, x: 9 * TILE_SIZE + 4, y: 3 * TILE_SIZE + 4, collected: false },
+                { id: 912, x: 20 * TILE_SIZE + 4, y: 11 * TILE_SIZE + 4, collected: false }
+            ];
+
+            weaponPickup = {
+                weaponId: 'hell_fireball',
+                x: 15 * TILE_SIZE + 4,
+                y: 10 * TILE_SIZE + 4,
+                collected: false
+            };
+
+            signs = [
+                { x: 4 * TILE_SIZE + 4, y: 2 * TILE_SIZE + 4, title: '煉獄冥界碑', text: '【靈魂試煉】你已墜入煉獄深淵！中央熔岩陣藏有傳說【熔岩火球術】，集齊 3 顆復活魂石即可重返人間！' }
+            ];
+
+            bullets = [];
+            slashes = [];
+            particles = [];
+            floatingTexts = [];
+            keys.w = keys.a = keys.s = keys.d = false;
+            player.isMoving = false;
+            player.hp = player.maxHp;
+            player.invulnTimer = 210; // 剛進入地獄 3.5 秒內不可被攻擊
+            player.x = 2 * TILE_SIZE + 4;
+            player.y = 1 * TILE_SIZE + 4;
+            player.dir = 'down';
+
+            spawnHellMonsters();
+            validateAndFixReachability(2, 1);
+            generatePixelArtBackground('hell');
+            updateFogOfWar();
+            updateHudDisplay();
+            showDialogue('💀 靈魂墜入煉獄深淵！', '生命值已耗盡！躲避惡魔彈幕並蒐集齊 3 顆【煉獄血魂石】即可復活返回主世界！');
+        }
+
+        /**
+         * 地獄復活：返回原本所在的主世界安全起點
+         */
+        function reviveFromHell() {
+            if (!savedOverworldState) {
+                loadOverworldBiome(currentBiomeKey, false);
+                return;
+            }
+
+            const st = savedOverworldState;
+            savedOverworldState = null;
+            currentRealm = 'overworld';
+            currentBiomeKey = st.biomeKey;
+            completedBiomes = new Set(st.completedBiomes);
+
+            const biome = OVERWORLD_BIOMES[currentBiomeKey];
+            gameShell.classList.remove('hell-theme', 'heaven-theme');
+            gemCounterBox.classList.remove('hell-counter', 'heaven-counter');
+            worldTitleEl.textContent = `${biome.icon} ${biome.name} (${completedBiomes.size}/5 區)`;
+
+            mapGrid = biome.map.map(row => [...row]);
+            fogGrid = st.fogGrid.map(row => [...row]);
+            chests = st.chests.map(c => ({ ...c }));
+            bandages = st.bandages.map(b => ({ ...b }));
+            weaponPickup = st.weaponPickup ? { ...st.weaponPickup } : null;
+            signs = st.signs.map(s => ({ ...s }));
+
+            bullets = [];
+            slashes = [];
+            particles = [];
+            floatingTexts = [];
+            keys.w = keys.a = keys.s = keys.d = false;
+            player.isMoving = false;
+            player.hp = player.maxHp;
+            player.invulnTimer = 210; // 復活返回地圖 3.5 秒內不可被攻擊
+            player.x = biome.spawn.col * TILE_SIZE + 4;
+            player.y = biome.spawn.row * TILE_SIZE + 4;
+            player.dir = 'down';
+
+            spawnBiomeMonsters(currentBiomeKey);
+            validateAndFixReachability(biome.spawn.col, biome.spawn.row);
+            generatePixelArtBackground(currentBiomeKey);
+            updateFogOfWar();
+            updateHudDisplay();
+            spawnSparkleParticles(player.x + 11, player.y + 12, '#ffd166', 24);
+            showDialogue('✨ 靈魂重塑・聖光復活！', `你已從煉獄重返【${biome.name}】！現在可以自由移動並繼續未完成的探索！`);
+        }
+
+        /**
+         * 集齊五大區域全部寶石後解鎖：聖光天堂獎勵關卡（無怪物、無迷霧，與上帝對話觸發最終破關結局）
+         */
+        function enterHeavenRealm() {
+            if (pendingBiomeTimer) { clearTimeout(pendingBiomeTimer); pendingBiomeTimer = null; }
+            currentRealm = 'heaven';
+            heavenEndingTriggered = false;
+            portalGate = null;
+
+            gameShell.classList.remove('hell-theme');
+            gameShell.classList.add('heaven-theme');
+            gemCounterBox.classList.remove('hell-counter');
+            gemCounterBox.classList.add('heaven-counter');
+            worldTitleEl.textContent = '✨ 聖光天堂・創世神殿（獎勵關卡）';
+
+            mapGrid = HEAVEN_RAW_MAP.map(row => [...row]);
+            // 天堂地圖完全無迷霧，全地圖光明照耀
+            fogGrid = Array.from({ length: ROWS }, () => Array(COLS).fill(true));
+
+            chests = [];
+            bandages = [];
+            weaponPickup = null;
+            monsters = [];
+            bullets = [];
+            slashes = [];
+            particles = [];
+            floatingTexts = [];
+
+            signs = [
+                {
+                    x: 14 * TILE_SIZE + 4,
+                    y: 2 * TILE_SIZE + 4,
+                    isGod: true,
+                    title: '👼 至高創世之神',
+                    text: [
+                        '「歡迎來到聖光天堂，勇敢的騎士！你已集齊五大秘境的全部 25 顆元素寶石，成功重鑄了世界星核！」',
+                        '「翡翠王國與整片大陸因你的勇氣重獲新生，現在接受我賜予你的永恆星辰加冕吧！」'
+                    ]
+                },
+                {
+                    x: 12 * TILE_SIZE + 4,
+                    y: 15 * TILE_SIZE + 4,
+                    title: '✨ 天界白雲路標',
+                    text: '【天堂聖諭】此地沒有任何怪物與迷霧，沿著黃金白雲大道向北走，即可晉見創世之神！'
+                }
+            ];
+
+            keys.w = keys.a = keys.s = keys.d = false;
+            player.isMoving = false;
+            player.hp = player.maxHp;
+            player.x = 14 * TILE_SIZE + 4;
+            player.y = 16 * TILE_SIZE + 4;
+            player.dir = 'up';
+
+            validateAndFixReachability(14, 16);
+            generatePixelArtBackground('heaven');
+            updateHudDisplay();
+            gemCountEl.textContent = '25';
+            gemTotalEl.textContent = '25';
+            spawnSparkleParticles(player.x + 11, player.y + 12, '#ffd166', 28);
+            showDialogue('👼 天界大門敞開！', '五大區域的 25 顆寶石共鳴開啟了通往【聖光天堂】的天梯！沿著黃金大道向北走與上帝對話吧！', 6000);
+        }
+
+        function initGame() {
+            if (pendingHellTimer) { clearTimeout(pendingHellTimer); pendingHellTimer = null; }
+            if (pendingBiomeTimer) { clearTimeout(pendingBiomeTimer); pendingBiomeTimer = null; }
+            if (pendingPortalTimer) { clearTimeout(pendingPortalTimer); pendingPortalTimer = null; }
+
+            savedOverworldState = null;
+            heavenEndingTriggered = false;
+            completedBiomes.clear();
+            victoryModal.classList.remove('active');
+            hideDialogue();
+
+            player.hp = player.maxHp;
+            player.weapon = 'default';
+            enterPrologueRoom();
+
+            if (isOnMainMenu) {
+                hideDialogue();
+            } else {
+                togglePause(false);
+            }
+        }
+
+        /**
+         * 進入遊戲主畫面並重置進度
+         */
+        function returnToMainMenu() {
+            isOnMainMenu = true;
+            isPaused = true;
+            keys.w = keys.a = keys.s = keys.d = false;
+            player.isMoving = false;
+            hideDialogue();
+            pauseOverlay.classList.remove('active');
+            confirmHomePanel.style.display = 'none';
+            pauseMainPanel.style.display = 'block';
+            victoryModal.classList.remove('active');
+            initGame();
+            hideDialogue();
+            mainMenuOverlay.classList.add('active');
+            worldTitleEl.textContent = '⚔️ 像素遺跡探索者';
+        }
+
+        function updateFogOfWar() {
+            if (currentRealm === 'heaven' || currentRealm === 'prologue') return;
+            const pCol = Math.floor((player.x + player.width / 2) / TILE_SIZE);
+            const pRow = Math.floor((player.y + player.height / 2) / TILE_SIZE);
+            const visionRadius = currentRealm === 'hell' ? 3 : 4;
+
+            for (let r = pRow - visionRadius; r <= pRow + visionRadius; r++) {
+                for (let c = pCol - visionRadius; c <= pCol + visionRadius; c++) {
+                    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+                        const dist = Math.hypot(c - pCol, r - pRow);
+                        if (dist <= visionRadius + 0.4) {
+                            fogGrid[r][c] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        function damagePlayer(amount) {
+            if (player.invulnTimer > 0 || currentRealm === 'heaven') return false;
+            player.hp = Math.max(0, player.hp - amount);
+            player.invulnTimer = 60;
+            updateHudDisplay();
+            spawnSparkleParticles(player.x + 11, player.y + 12, '#e63946', 16);
+            spawnFloatingText(player.x + 11, player.y - 6, `-${amount} ♥`, '#ff595e');
+
+            if (player.hp <= 0) {
+                if (currentRealm === 'overworld') {
+                    if (!pendingHellTimer) {
+                        showDialogue('💔 生命值歸零！', '你的靈魂正在被吸入煉獄深淵……');
+                        pendingHellTimer = setTimeout(() => {
+                            pendingHellTimer = null;
+                            enterHellRealm();
+                        }, 850);
+                    }
+                    return true;
+                } else if (currentRealm === 'hell') {
+                    // 在地獄再次陣亡時重新開始煉獄試煉
+                    showDialogue('🔥 煉獄靈魂重聚！', '惡魔的火焰將你打回煉獄起點，再次挑戰收集 3 顆血魂石吧！');
+                    player.hp = player.maxHp;
+                    player.invulnTimer = 90;
+                    player.x = 2 * TILE_SIZE + 4;
+                    player.y = 1 * TILE_SIZE + 4;
+                    chests.forEach(c => { c.opened = false; });
+                    bullets = [];
+                    updateHudDisplay();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function updatePlayer() {
+            if (player.invulnTimer > 0) player.invulnTimer--;
+            if (player.attackCooldown > 0) player.attackCooldown--;
+
+            let dx = 0;
+            let dy = 0;
+            if (keys.w) dy -= 1;
+            if (keys.s) dy += 1;
+            if (keys.a) dx -= 1;
+            if (keys.d) dx += 1;
+
+            if (dx !== 0 && dy !== 0) {
+                const inv = 1 / Math.SQRT2;
+                dx *= inv;
+                dy *= inv;
+            }
+
+            if (dx !== 0 || dy !== 0) {
+                player.isMoving = true;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    player.dir = dx < 0 ? 'left' : 'right';
+                } else {
+                    player.dir = dy < 0 ? 'up' : 'down';
+                }
+
+                const nextX = player.x + dx * player.speed;
+                const nextY = player.y + dy * player.speed;
+                if (canMoveTo(nextX, player.y)) player.x = nextX;
+                if (canMoveTo(player.x, nextY)) player.y = nextY;
+
+                player.animTimer++;
+                if (player.animTimer >= 8) {
+                    player.animTimer = 0;
+                    player.animFrame = (player.animFrame + 1) % 4;
+                }
+                updateFogOfWar();
+            } else {
+                player.isMoving = false;
+                player.animFrame = 0;
+            }
+
+            const pCenterX = player.x + player.width / 2;
+            const pCenterY = player.y + player.height / 2;
+
+            // 1. 檢查醫療繃帶拾取 (立即回復 1 滴血)
+            for (const b of bandages) {
+                if (b.collected) continue;
+                const dist = Math.hypot(pCenterX - (b.x + 12), pCenterY - (b.y + 12));
+                if (dist < 26) {
+                    b.collected = true;
+                    const healed = player.hp < player.maxHp ? 1 : 0;
+                    player.hp = Math.min(player.maxHp, player.hp + 1);
+                    updateHudDisplay();
+                    spawnSparkleParticles(b.x + 12, b.y + 12, '#ffccd5', 14);
+                    spawnFloatingText(pCenterX, player.y - 8, healed > 0 ? '+1 ♥ 繃帶回復!' : '♥ 生命已滿!', '#ffccd5');
+                }
+            }
+
+            // 2. 檢查區域專屬武器拾取
+            if (weaponPickup && !weaponPickup.collected) {
+                const dist = Math.hypot(pCenterX - (weaponPickup.x + 12), pCenterY - (weaponPickup.y + 12));
+                if (dist < 28) {
+                    weaponPickup.collected = true;
+                    player.weapon = weaponPickup.weaponId;
+                    const wInfo = WEAPONS[weaponPickup.weaponId];
+                    updateHudDisplay();
+                    spawnSparkleParticles(weaponPickup.x + 12, weaponPickup.y + 12, wInfo.color, 22);
+                    spawnFloatingText(pCenterX, player.y - 12, `獲得 ${wInfo.name}!`, wInfo.color);
+                    showDialogue(`${wInfo.icon} 獲得專屬武器：【${wInfo.name}】`, wInfo.desc);
+                }
+            }
+
+            // 3. 檢查寶箱開啟與地圖切換邏輯
+            for (const chest of chests) {
+                if (chest.opened) continue;
+                const dist = Math.hypot(pCenterX - (chest.x + 12), pCenterY - (chest.y + 12));
+                if (dist < 28) {
+                    chest.opened = true;
+                    updateHudDisplay();
+                    spawnSparkleParticles(chest.x + 12, chest.y + 12, chest.color, 18);
+                    spawnFloatingText(pCenterX, player.y - 10, `+1 ${chest.gemName}`, chest.color);
+
+                    const totalOpened = chests.filter(c => c.opened).length;
+                    if (totalOpened === chests.length) {
+                        if (currentRealm === 'hell') {
+                            showDialogue('🔥 三顆煉獄血魂石齊聚！', '血色法陣正在開啟，準備重返主世界……');
+                            setTimeout(() => {
+                                reviveFromHell();
+                            }, 900);
+                        } else if (currentRealm === 'overworld') {
+                            completedBiomes.add(currentBiomeKey);
+                            worldTitleEl.textContent = `${OVERWORLD_BIOMES[currentBiomeKey].icon} ${OVERWORLD_BIOMES[currentBiomeKey].name} (${completedBiomes.size}/5 區)`;
+
+                            if (completedBiomes.size >= BIOME_KEYS.length) {
+                                // 五大區域全部收集完成 -> 解鎖聖光天堂獎勵關卡！
+                                showDialogue('🌟 五大區域聖物全數集齊！', '天際降下金色光柱，通往【聖光天堂】的聖門已開啟！');
+                                pendingBiomeTimer = setTimeout(() => {
+                                    pendingBiomeTimer = null;
+                                    enterHeavenRealm();
+                                }, 1200);
+                            } else {
+                                // 隨機切換到下一個尚未探索的區域
+                                const remaining = BIOME_KEYS.filter(k => !completedBiomes.has(k));
+                                const nextBiome = remaining[Math.floor(Math.random() * remaining.length)];
+                                showDialogue('✨ 區域寶石全數集齊！', `空間傳送陣啟動，即將前往下一個隨機區域【${OVERWORLD_BIOMES[nextBiome].name}】！`);
+                                pendingBiomeTimer = setTimeout(() => {
+                                    pendingBiomeTimer = null;
+                                    loadOverworldBiome(nextBiome, true);
+                                }, 1200);
+                            }
+                        }
+                    } else {
+                        showDialogue(`💎 發現寶箱：${chest.gemName}`, `已收集 (${totalOpened}/${chests.length}) 顆寶石，繼續探索其餘角落！`, 3200);
+                    }
+                }
+            }
+
+            // 4. 檢查路標石碑與天堂上帝對話互動
+            for (const sign of signs) {
+                const dist = Math.hypot(pCenterX - (sign.x + 12), pCenterY - (sign.y + 12));
+                if (dist < 32) {
+                    if (sign.isGod && !heavenEndingTriggered) {
+                        heavenEndingTriggered = true;
+                        keys.w = keys.a = keys.s = keys.d = false;
+                        player.isMoving = false;
+                        spawnSparkleParticles(sign.x + 12, sign.y + 12, '#ffd166', 36);
+                        showDialogue(sign.title, sign.text, 0);
+                        setTimeout(() => {
+                            victoryModal.classList.add('active');
+                        }, 1600);
+                    } else if (!sign.isGod && dialogueBox.style.display !== 'block') {
+                        showDialogue(sign.title, sign.text, sign.isSage ? 0 : 4500);
+                    }
+                }
+            }
+
+            // 5. 檢查序章大廳北方的「星界傳送門」觸發傳送至五大隨機探索地圖
+            if (currentRealm === 'prologue' && portalGate && !portalGate.activated) {
+                const distPortal = Math.hypot(pCenterX - portalGate.x, pCenterY - portalGate.y);
+                if (distPortal < portalGate.radius + 8) {
+                    portalGate.activated = true;
+                    keys.w = keys.a = keys.s = keys.d = false;
+                    player.isMoving = false;
+                    const firstBiome = BIOME_KEYS[Math.floor(Math.random() * BIOME_KEYS.length)];
+                    spawnSparkleParticles(portalGate.x, portalGate.y, '#90e0ef', 30);
+                    showDialogue('🌀 星界傳送門啟動！', `空間座標已鎖定【${OVERWORLD_BIOMES[firstBiome].name}】，正在傳送至秘境……`);
+                    pendingPortalTimer = setTimeout(() => {
+                        pendingPortalTimer = null;
+                        loadOverworldBiome(firstBiome, true);
+                    }, 950);
+                }
+            }
+        }
+
+        function applyWeaponStatus(monster, wInfo) {
+            if (!wInfo || !wInfo.statusType) return;
+            if (wInfo.statusType === 'burn') {
+                monster.burnTimer = wInfo.statusDuration;
+                spawnFloatingText(monster.x + 12, monster.y - 16, '🔥 燃燒!', '#ff5400');
+            } else if (wInfo.statusType === 'poison') {
+                monster.poisonTimer = wInfo.statusDuration;
+                spawnFloatingText(monster.x + 12, monster.y - 16, '☠️ 中毒!', '#52b788');
+            } else if (wInfo.statusType === 'freeze') {
+                monster.freezeTimer = wInfo.statusDuration;
+                spawnFloatingText(monster.x + 12, monster.y - 16, '❄️ 冰凍!', '#48cae4');
+            } else if (wInfo.statusType === 'shock') {
+                monster.shockTimer = wInfo.statusDuration;
+                spawnFloatingText(monster.x + 12, monster.y - 16, '⚡ 麻痺!', '#ffb703');
+            }
+        }
+
+        function damageMonster(m, dmg, knockAngle, wInfo) {
+            m.hp -= dmg;
+            m.hitFlash = 8;
+            applyWeaponStatus(m, wInfo);
+
+            const knockX = m.x + Math.cos(knockAngle) * 14;
+            const knockY = m.y + Math.sin(knockAngle) * 14;
+            if (canMonsterMoveTo(knockX, m.y, m.width, m.height)) m.x = knockX;
+            if (canMonsterMoveTo(m.x, knockY, m.width, m.height)) m.y = knockY;
+
+            spawnSparkleParticles(m.x + 12, m.y + 12, wInfo ? wInfo.color : '#ffd166', 12);
+            spawnFloatingText(m.x + 12, m.y - 6, `-${dmg}`, '#ffd166');
+
+            if (m.hp <= 0) {
+                spawnSparkleParticles(m.x + 12, m.y + 12, m.color, 22);
+                spawnFloatingText(m.x + 12, m.y - 14, `${m.name} 擊破!`, '#90e0ef');
+                // 擊敗怪物有機率掉落醫療繃帶
+                if (Math.random() < 0.35) {
+                    bandages.push({
+                        id: Date.now() + Math.random(),
+                        x: m.x,
+                        y: m.y,
+                        collected: false
+                    });
+                }
+            }
+        }
+
+        function triggerPlayerAttack(targetX, targetY) {
+            if (player.attackCooldown > 0) return;
+            const wInfo = WEAPONS[player.weapon] || WEAPONS.default;
+            player.attackCooldown = wInfo.cooldown;
+            playShootSfx(wInfo.id);
+
+            const pCenterX = player.x + player.width / 2;
+            const pCenterY = player.y + player.height / 2;
+            const angle = Math.atan2(targetY - pCenterY, targetX - pCenterX);
+
+            if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
+                player.dir = Math.cos(angle) < 0 ? 'left' : 'right';
+            } else {
+                player.dir = Math.sin(angle) < 0 ? 'up' : 'down';
+            }
+
+            if (wInfo.speed === 0) {
+                // 近戰揮砍類武器（探險短劍 / 沙暴雷霆鞭）
+                slashes.push({
+                    x: pCenterX + Math.cos(angle) * 18,
+                    y: pCenterY + Math.sin(angle) * 18,
+                    angle,
+                    radius: wInfo.range * 0.58,
+                    color: wInfo.color,
+                    life: 10,
+                    maxLife: 10
+                });
+
+                for (let i = monsters.length - 1; i >= 0; i--) {
+                    const m = monsters[i];
+                    const mCenterX = m.x + m.width / 2;
+                    const mCenterY = m.y + m.height / 2;
+                    const dist = Math.hypot(mCenterX - pCenterX, mCenterY - pCenterY);
+                    if (dist <= wInfo.range) {
+                        const angleToM = Math.atan2(mCenterY - pCenterY, mCenterX - pCenterX);
+                        let diff = Math.abs(angleToM - angle);
+                        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+                        if (diff <= 1.25) {
+                            damageMonster(m, wInfo.damage, angle, wInfo);
+                            if (m.hp <= 0) monsters.splice(i, 1);
+                        }
+                    }
+                }
+
+                // 近戰揮砍可劈散範圍內的敵方彈幕
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const b = bullets[i];
+                    if (b.fromPlayer) continue;
+                    const dist = Math.hypot(b.x - pCenterX, b.y - pCenterY);
+                    if (dist <= wInfo.range) {
+                        spawnSparkleParticles(b.x, b.y, wInfo.coreColor, 5);
+                        bullets.splice(i, 1);
+                    }
+                }
+            } else {
+                // 遠程發射類武器（精靈藤蔓弓 / 永凍寒霜杖 / 矮人榴彈砲 / 聖光王權巨劍 / 熔岩火球術）
+                const angles = wInfo.id === 'snow_staff' ? [angle - 0.22, angle, angle + 0.22] : [angle];
+                angles.forEach(a => {
+                    bullets.push({
+                        fromPlayer: true,
+                        weaponId: wInfo.id,
+                        damage: wInfo.damage,
+                        x: pCenterX + Math.cos(a) * 14,
+                        y: pCenterY + Math.sin(a) * 14,
+                        vx: Math.cos(a) * wInfo.speed,
+                        vy: Math.sin(a) * wInfo.speed,
+                        radius: wInfo.id === 'hell_fireball' || wInfo.id === 'castle_sword' ? 7 : 5,
+                        color: wInfo.color,
+                        coreColor: wInfo.coreColor,
+                        life: Math.round(wInfo.range / wInfo.speed)
+                    });
+                });
+            }
+        }
+
+        function updateMonstersAndBullets() {
+            const pCenterX = player.x + player.width / 2;
+            const pCenterY = player.y + player.height / 2;
+
+            // 更新斬擊特效
+            for (let i = slashes.length - 1; i >= 0; i--) {
+                slashes[i].life--;
+                if (slashes[i].life <= 0) slashes.splice(i, 1);
+            }
+
+            // 更新怪物移動、異常狀態與彈幕發射
+            for (let i = monsters.length - 1; i >= 0; i--) {
+                const m = monsters[i];
+                if (m.hitFlash > 0) m.hitFlash--;
+
+                // 異常狀態持續扣血（燃燒/中毒）
+                let hasDot = false;
+                if (m.burnTimer > 0) {
+                    m.burnTimer--;
+                    hasDot = true;
+                    if (m.burnTimer % 18 === 0) spawnSparkleParticles(m.x + 12, m.y + 12, '#ff5400', 3);
+                }
+                if (m.poisonTimer > 0) {
+                    m.poisonTimer--;
+                    hasDot = true;
+                    if (m.poisonTimer % 18 === 0) spawnSparkleParticles(m.x + 12, m.y + 12, '#52b788', 3);
+                }
+                if (hasDot) {
+                    m.dotTick++;
+                    if (m.dotTick >= 55) {
+                        m.dotTick = 0;
+                        m.hp -= 1;
+                        spawnFloatingText(m.x + 12, m.y - 6, '-1', m.burnTimer > 0 ? '#ff5400' : '#52b788');
+                        if (m.hp <= 0) {
+                            spawnSparkleParticles(m.x + 12, m.y + 12, '#ffd166', 18);
+                            monsters.splice(i, 1);
+                            continue;
+                        }
+                    }
+                }
+
+                if (m.freezeTimer > 0) m.freezeTimer--;
+                if (m.shockTimer > 0) m.shockTimer--;
+
+                // 移動速度受冰凍與麻痺影響
+                let speedFactor = 1.0;
+                if (m.freezeTimer > 0) speedFactor *= 0.4;
+                if (m.shockTimer > 0) speedFactor *= 0.15;
+
+                m.moveTimer--;
+                if (m.moveTimer <= 0) {
+                    m.moveTimer = 50 + Math.floor(Math.random() * 50);
+                    m.moveAngle = Math.random() * Math.PI * 2;
+                }
+
+                const vx = Math.cos(m.moveAngle) * m.speed * speedFactor;
+                const vy = Math.sin(m.moveAngle) * m.speed * speedFactor;
+                const nextMX = m.x + vx;
+                const nextMY = m.y + vy;
+                let moved = false;
+                if (canMonsterMoveTo(nextMX, m.y, m.width, m.height)) {
+                    m.x = nextMX;
+                    moved = true;
+                }
+                if (canMonsterMoveTo(m.x, nextMY, m.width, m.height)) {
+                    m.y = nextMY;
+                    moved = true;
+                }
+                if (!moved) {
+                    m.moveAngle += Math.PI * 0.65 + (Math.random() - 0.5) * 0.5;
+                    m.moveTimer = 20;
+                }
+
+                // 只有在玩家視野附近且未完全麻痺時發射彈幕
+                const mCenterX = m.x + 12;
+                const mCenterY = m.y + 12;
+                const distToPlayer = Math.hypot(pCenterX - mCenterX, pCenterY - mCenterY);
+
+                if (distToPlayer < 290 && m.shockTimer <= 0) {
+                    m.shootTimer--;
+                    if (m.shootTimer <= 0) {
+                        m.shootTimer = m.shootCooldown * (m.freezeTimer > 0 ? 1.5 : 1);
+                        const baseAngle = Math.atan2(pCenterY - mCenterY, pCenterX - mCenterX);
+
+                        if (m.type === 'ring') {
+                            const count = 8;
+                            for (let k = 0; k < count; k++) {
+                                const a = (Math.PI * 2 * k) / count;
+                                bullets.push({
+                                    fromPlayer: false,
+                                    x: mCenterX, y: mCenterY,
+                                    vx: Math.cos(a) * 2.3, vy: Math.sin(a) * 2.3,
+                                    radius: 5, color: m.color, coreColor: '#ffffff', life: 150
+                                });
+                            }
+                        } else if (m.type === 'claw') {
+                            // 劍齒虎專屬：高速三連爪擊弧形彈幕
+                            [-0.16, 0, 0.16].forEach((offset, idx) => {
+                                const a = baseAngle + offset;
+                                const spd = idx === 1 ? 3.5 : 3.1;
+                                bullets.push({
+                                    fromPlayer: false,
+                                    x: mCenterX, y: mCenterY,
+                                    vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+                                    radius: 5, color: '#ff9f1c', coreColor: '#ffffff', life: 125
+                                });
+                            });
+                        } else if (m.type === 'cross') {
+                            // 黑騎士/炎魔專屬：旋轉十字重劍氣彈幕
+                            m.spiralAngle += 0.38;
+                            for (let k = 0; k < 4; k++) {
+                                const a = m.spiralAngle + (Math.PI / 2) * k;
+                                bullets.push({
+                                    fromPlayer: false,
+                                    x: mCenterX, y: mCenterY,
+                                    vx: Math.cos(a) * 2.6, vy: Math.sin(a) * 2.6,
+                                    radius: 6, color: m.color, coreColor: '#ffd166', life: 140
+                                });
+                            }
+                        } else if (m.type === 'spread') {
+                            [-0.28, 0, 0.28].forEach(offset => {
+                                const a = baseAngle + offset;
+                                bullets.push({
+                                    fromPlayer: false,
+                                    x: mCenterX, y: mCenterY,
+                                    vx: Math.cos(a) * 2.8, vy: Math.sin(a) * 2.8,
+                                    radius: 5, color: m.color, coreColor: '#ffd166', life: 140
+                                });
+                            });
+                        } else if (m.type === 'spiral') {
+                            m.spiralAngle += 0.55;
+                            [m.spiralAngle, m.spiralAngle + Math.PI].forEach(a => {
+                                bullets.push({
+                                    fromPlayer: false,
+                                    x: mCenterX, y: mCenterY,
+                                    vx: Math.cos(a) * 2.4, vy: Math.sin(a) * 2.4,
+                                    radius: 5, color: m.color, coreColor: '#ffccd5', life: 145
+                                });
+                            });
+                        }
+                    }
+                }
+
+                // 怪物本體碰觸玩家扣血
+                if (distToPlayer < 20) {
+                    if (damagePlayer(1)) return;
+                }
+            }
+
+            // 更新所有子彈飛行與碰撞
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                if (!b) continue;
+                b.x += b.vx;
+                b.y += b.vy;
+                b.life--;
+
+                const bCol = Math.floor(b.x / TILE_SIZE);
+                const bRow = Math.floor(b.y / TILE_SIZE);
+                if (b.life <= 0 || bCol < 0 || bCol >= COLS || bRow < 0 || bRow >= ROWS || mapGrid[bRow][bCol] === 2) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                if (b.fromPlayer) {
+                    const wInfo = WEAPONS[b.weaponId] || WEAPONS.default;
+                    let hit = false;
+                    for (let j = monsters.length - 1; j >= 0; j--) {
+                        const m = monsters[j];
+                        const dist = Math.hypot(b.x - (m.x + 12), b.y - (m.y + 12));
+                        if (dist < b.radius + 14) {
+                            hit = true;
+                            const knockAngle = Math.atan2(b.vy, b.vx);
+                            if (b.weaponId === 'village_cannon') {
+                                // 榴彈範圍爆破
+                                spawnSparkleParticles(b.x, b.y, '#ff5400', 22);
+                                for (let k = monsters.length - 1; k >= 0; k--) {
+                                    const m2 = monsters[k];
+                                    if (Math.hypot(b.x - (m2.x + 12), b.y - (m2.y + 12)) < 68) {
+                                        damageMonster(m2, b.damage, knockAngle, wInfo);
+                                        if (m2.hp <= 0) monsters.splice(k, 1);
+                                    }
+                                }
+                            } else {
+                                damageMonster(m, b.damage, knockAngle, wInfo);
+                                if (m.hp <= 0) monsters.splice(j, 1);
+                            }
+                            break;
+                        }
+                    }
+                    if (hit && b.weaponId !== 'castle_sword') {
+                        bullets.splice(i, 1);
+                    }
+                } else {
+                    const distToPlayer = Math.hypot(b.x - pCenterX, b.y - pCenterY);
+                    if (distToPlayer < b.radius + 9) {
+                        bullets.splice(i, 1);
+                        if (damagePlayer(1)) return;
+                    }
+                }
+            }
+
+            // 更新粒子與飄浮文字
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.life--;
+                if (pt.life <= 0) particles.splice(i, 1);
+            }
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y -= 0.55;
+                ft.life--;
+                if (ft.life <= 0) floatingTexts.splice(i, 1);
+            }
+        }
+
+        function drawLiquidShimmer(timestamp) {
+            const wavePhase = Math.floor(timestamp / 350) % 2;
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (mapGrid[r][c] === 3 && fogGrid[r][c]) {
+                        const sx = c * TILE_SIZE;
+                        const sy = r * TILE_SIZE;
+                        if (currentRealm === 'hell') {
+                            ctx.fillStyle = wavePhase === 0 ? 'rgba(255, 214, 10, 0.45)' : 'rgba(255, 84, 0, 0.45)';
+                        } else if (currentRealm === 'heaven') {
+                            ctx.fillStyle = wavePhase === 0 ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 224, 102, 0.45)';
+                        } else {
+                            ctx.fillStyle = 'rgba(144, 224, 239, 0.45)';
+                        }
+                        if ((r + c + wavePhase) % 2 === 0) {
+                            ctx.fillRect(sx + 6, sy + 10, 10, 3);
+                        } else {
+                            ctx.fillRect(sx + 14, sy + 20, 10, 3);
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawHeroSprite(x, y, dir, frame) {
+            // 僅受擊後的短暫無敵 (<= 60幀) 才閃爍人物；開局進場 3.5 秒無敵 (> 60幀) 保持人物清晰不閃爍，改由金色護盾閃爍
+            const isHitHurtFlash = player.invulnTimer > 0 && player.invulnTimer <= 60;
+            if (isHitHurtFlash && Math.floor(player.invulnTimer / 4) % 2 === 0) return;
+
+            const bobY = (frame === 1 || frame === 3) ? -2 : 0;
+            const cx = x + 11;
+            const cy = y + 12;
+
+            // 腳底白色微光定錨圈，讓角色在任何深色/亮色地形上都極為醒目
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(cx, y + 23, 12, 4.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillRect(x + 2, y + 21, 18, 4);
+
+            // 深黑像素外框輪廓描邊（防止與背景顏色混合）
+            ctx.fillStyle = '#0b0e14';
+            ctx.fillRect(x + 2, y + bobY, 18, 21);
+
+            // 鮮明披風（天堂聖光金 / 煉獄烈焰紅 / 主世界亮紅）
+            ctx.fillStyle = currentRealm === 'heaven' ? '#ffd166' : (currentRealm === 'hell' ? '#ff4d6d' : '#ff2a55');
+            if (dir === 'up') {
+                ctx.fillRect(x + 3, y + 9 + bobY, 16, 11);
+            } else {
+                ctx.fillRect(x + 2, y + 10 + bobY, 18, 9);
+            }
+
+            // 亮藍騎士盔甲與白銀胸甲高光
+            ctx.fillStyle = '#3a86ff';
+            ctx.fillRect(x + 4, y + 10 + bobY, 14, 9);
+            ctx.fillStyle = '#caf0f8';
+            ctx.fillRect(x + 7, y + 11 + bobY, 8, 4);
+
+            // 頭部與閃耀金髮頭冠
+            ctx.fillStyle = '#ffcdb2';
+            ctx.fillRect(x + 4, y + 2 + bobY, 14, 9);
+            ctx.fillStyle = '#ffbe0b';
+            ctx.fillRect(x + 3, y + bobY, 16, 4);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x + 5, y + 1 + bobY, 6, 2);
+
+            // 隨裝備武器變色的背負武器標誌
+            const wInfo = WEAPONS[player.weapon] || WEAPONS.default;
+            ctx.fillStyle = wInfo.color;
+            ctx.fillRect(x + 17, y + 4 + bobY, 4, 12);
+
+            // 眼睛
+            ctx.fillStyle = '#0b0e14';
+            if (dir === 'down') {
+                ctx.fillRect(x + 6, y + 6 + bobY, 3, 3);
+                ctx.fillRect(x + 13, y + 6 + bobY, 3, 3);
+            } else if (dir === 'left') {
+                ctx.fillRect(x + 5, y + 6 + bobY, 3, 3);
+            } else if (dir === 'right') {
+                ctx.fillRect(x + 14, y + 6 + bobY, 3, 3);
+            }
+
+            // 雙腳戰靴
+            ctx.fillStyle = '#f8f9fa';
+            const leftFoot = frame === 1 ? -2 : (frame === 3 ? 2 : 0);
+            const rightFoot = -leftFoot;
+            ctx.fillRect(x + 5, y + 19 + leftFoot, 5, 4);
+            ctx.fillRect(x + 12, y + 19 + rightFoot, 5, 4);
+
+            // 開局進入地圖 3.5 秒無敵期間：人物保持穩定不閃爍，改由外圍金色能量護盾閃爍
+            if (player.invulnTimer > 60) {
+                const shieldBlink = Math.floor(player.invulnTimer / 5) % 2 === 0;
+                ctx.save();
+                ctx.fillStyle = shieldBlink ? 'rgba(255, 224, 102, 0.24)' : 'rgba(144, 224, 239, 0.14)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = shieldBlink ? '#ffd166' : '#ffffff';
+                ctx.lineWidth = shieldBlink ? 3 : 1.5;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function drawMonsterSprite(m, timestamp) {
+            const bob = Math.sin(timestamp / 180 + m.id) * 2;
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillRect(m.x + 2, m.y + 21, 20, 4);
+
+            // 黑色像素外框描邊
+            ctx.fillStyle = '#0b0e14';
+            ctx.fillRect(m.x + 2, m.y + 2 + bob, 20, 19);
+
+            const bodyColor = m.hitFlash > 0 ? '#ffffff' : m.color;
+
+            if (m.species === 'sabertooth') {
+                // 🌿 迷霧森林：猛虎劍齒虎（虎耳、橘黃虎紋、白色雙長劍齒）
+                ctx.fillStyle = bodyColor;
+                ctx.fillRect(m.x + 3, m.y + 4 + bob, 18, 15);
+                ctx.fillRect(m.x + 4, m.y + 1 + bob, 4, 4);
+                ctx.fillRect(m.x + 16, m.y + 1 + bob, 4, 4);
+                // 黑色虎紋
+                ctx.fillStyle = '#14181f';
+                ctx.fillRect(m.x + 10, m.y + 4 + bob, 4, 3);
+                ctx.fillRect(m.x + 4, m.y + 10 + bob, 3, 2);
+                ctx.fillRect(m.x + 17, m.y + 10 + bob, 3, 2);
+                // 兇猛紅眼
+                ctx.fillStyle = '#ff0055';
+                ctx.fillRect(m.x + 6, m.y + 7 + bob, 3, 3);
+                ctx.fillRect(m.x + 15, m.y + 7 + bob, 3, 3);
+                // 標誌性白色長劍齒
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(m.x + 6, m.y + 14 + bob, 3, 7);
+                ctx.fillRect(m.x + 15, m.y + 14 + bob, 3, 7);
+            } else if (m.species === 'yeti') {
+                // ❄️ 極地雪山：冰霜雪怪（白毛肩甲、冰藍身軀、雙冰角）
+                ctx.fillStyle = bodyColor;
+                ctx.fillRect(m.x + 3, m.y + 4 + bob, 18, 16);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(m.x + 4, m.y + 2 + bob, 16, 6);
+                ctx.fillStyle = '#0077b6';
+                ctx.fillRect(m.x + 3, m.y - 1 + bob, 4, 4);
+                ctx.fillRect(m.x + 17, m.y - 1 + bob, 4, 4);
+                ctx.fillStyle = '#ffbe0b';
+                ctx.fillRect(m.x + 6, m.y + 8 + bob, 4, 3);
+                ctx.fillRect(m.x + 14, m.y + 8 + bob, 4, 3);
+            } else if (m.species === 'scorpion') {
+                // 🏜️ 黃金沙漠：劇毒沙蠍（雙巨螯、甲殼與高舉毒刺尾針）
+                ctx.fillStyle = bodyColor;
+                ctx.fillRect(m.x + 4, m.y + 7 + bob, 16, 12);
+                // 雙螯
+                ctx.fillRect(m.x + 1, m.y + 11 + bob, 4, 6);
+                ctx.fillRect(m.x + 19, m.y + 11 + bob, 4, 6);
+                // 高舉毒尾針
+                ctx.fillRect(m.x + 10, m.y + 1 + bob, 4, 6);
+                ctx.fillStyle = '#ffd166';
+                ctx.fillRect(m.x + 11, m.y - 2 + bob, 3, 3);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(m.x + 7, m.y + 10 + bob, 3, 3);
+                ctx.fillRect(m.x + 14, m.y + 10 + bob, 3, 3);
+            } else if (m.species === 'slime') {
+                // 🏘️ 邊境村莊：皇冠史萊姆（半圓果凍身軀 + 金色小皇冠）
+                ctx.fillStyle = bodyColor;
+                ctx.fillRect(m.x + 3, m.y + 8 + bob, 18, 12);
+                ctx.fillRect(m.x + 5, m.y + 5 + bob, 14, 4);
+                ctx.fillStyle = '#ffd166';
+                ctx.fillRect(m.x + 7, m.y + 1 + bob, 10, 4);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(m.x + 6, m.y + 10 + bob, 3, 3);
+                ctx.fillRect(m.x + 15, m.y + 10 + bob, 3, 3);
+            } else if (m.species === 'knight') {
+                // 🏰 皇家城堡：墮落黑騎士（重裝鐵盔、紅羽纓、銀盾）
+                ctx.fillStyle = '#2b2d42';
+                ctx.fillRect(m.x + 3, m.y + 3 + bob, 18, 17);
+                ctx.fillStyle = '#e63946';
+                ctx.fillRect(m.x + 9, m.y - 1 + bob, 6, 4);
+                ctx.fillStyle = '#adb5bd';
+                ctx.fillRect(m.x + 1, m.y + 8 + bob, 4, 10);
+                ctx.fillStyle = '#ffbe0b';
+                ctx.fillRect(m.x + 7, m.y + 7 + bob, 10, 3);
+            } else {
+                // 🔥 煉獄深淵：熔岩炎魔（雙角、烈焰核心與熾熱雙眼）
+                ctx.fillStyle = bodyColor;
+                ctx.fillRect(m.x + 3, m.y + 4 + bob, 18, 16);
+                ctx.fillStyle = '#ffd166';
+                ctx.fillRect(m.x + 3, m.y + bob, 4, 4);
+                ctx.fillRect(m.x + 17, m.y + bob, 4, 4);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(m.x + 6, m.y + 8 + bob, 4, 4);
+                ctx.fillRect(m.x + 14, m.y + 8 + bob, 4, 4);
+            }
+
+            // 異常狀態視覺光環（燃燒/中毒/冰凍/麻痺）
+            if (m.burnTimer > 0) {
+                ctx.strokeStyle = '#ff5400';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(m.x + 1, m.y + 1 + bob, 22, 21);
+            } else if (m.poisonTimer > 0) {
+                ctx.strokeStyle = '#52b788';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(m.x + 1, m.y + 1 + bob, 22, 21);
+            } else if (m.freezeTimer > 0) {
+                ctx.strokeStyle = '#48cae4';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(m.x + 1, m.y + 1 + bob, 22, 21);
+            } else if (m.shockTimer > 0) {
+                ctx.strokeStyle = '#ffb703';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(m.x + 1, m.y + 1 + bob, 22, 21);
+            }
+
+            // 怪物血條
+            const hpRatio = Math.max(0, m.hp / m.maxHp);
+            ctx.fillStyle = '#14181f';
+            ctx.fillRect(m.x + 2, m.y - 6 + bob, 20, 4);
+            ctx.fillStyle = '#e63946';
+            ctx.fillRect(m.x + 3, m.y - 5 + bob, Math.round(18 * hpRatio), 2);
+        }
+
+        function render(timestamp) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 若在主畫面，繪製精緻像素風景與動態聖劍徽章
+            if (isOnMainMenu) {
+                renderMainMenuOverlayArt(timestamp);
+                return;
+            }
+
+            // 1. 繪製預先生成的離屏像素底圖
+            ctx.drawImage(bgCanvas, 0, 0);
+
+            // 2. 繪製動態水面 / 岩漿 / 聖河波光
+            drawLiquidShimmer(timestamp);
+
+            // 3. 繪製路標石碑、序章大賢者與聖光天堂的上帝NPC
+            for (const sign of signs) {
+                const col = Math.floor((sign.x + 12) / TILE_SIZE);
+                const row = Math.floor((sign.y + 12) / TILE_SIZE);
+                if (!fogGrid[row]?.[col]) continue;
+
+                if (sign.isGod) {
+                    const floatY = Math.sin(timestamp / 260) * 3;
+                    const gx = sign.x + 12;
+                    const gy = sign.y + 12;
+
+                    // 腳底聖光陣與陰影
+                    ctx.fillStyle = 'rgba(255, 209, 102, 0.42)';
+                    ctx.beginPath();
+                    ctx.ellipse(gx, sign.y + 23, 16, 6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffd166';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.ellipse(gx, sign.y + 23, 16, 6, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 天使羽翼（深色描邊 + 純白羽毛）
+                    ctx.fillStyle = '#3d2c1e';
+                    ctx.fillRect(sign.x - 3, sign.y + 6 + floatY, 7, 11);
+                    ctx.fillRect(sign.x + 20, sign.y + 6 + floatY, 7, 11);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(sign.x - 2, sign.y + 7 + floatY, 5, 9);
+                    ctx.fillRect(sign.x + 21, sign.y + 7 + floatY, 5, 9);
+
+                    // 頭頂天使光環（深色外框 + 亮金內環）
+                    ctx.strokeStyle = '#3d2c1e';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.ellipse(gx, sign.y - 3 + floatY, 9, 3.5, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.strokeStyle = '#ffd166';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.ellipse(gx, sign.y - 3 + floatY, 9, 3.5, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 人物深色像素外框描邊（避免與天堂白雲背景融合）
+                    ctx.fillStyle = '#1b1521';
+                    ctx.fillRect(sign.x + 3, sign.y + floatY, 18, 23);
+
+                    // 白金聖袍與皇室金邊
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(sign.x + 4, sign.y + 7 + floatY, 16, 15);
+                    ctx.fillStyle = '#ffd166';
+                    ctx.fillRect(sign.x + 10, sign.y + 7 + floatY, 4, 15);
+                    ctx.fillRect(sign.x + 4, sign.y + 19 + floatY, 16, 3);
+
+                    // 臉部、慈祥白鬚與雙眼
+                    ctx.fillStyle = '#ffcdb2';
+                    ctx.fillRect(sign.x + 6, sign.y + 1 + floatY, 12, 7);
+                    ctx.fillStyle = '#1b1521';
+                    ctx.fillRect(sign.x + 8, sign.y + 3 + floatY, 2, 2);
+                    ctx.fillRect(sign.x + 14, sign.y + 3 + floatY, 2, 2);
+                    ctx.fillStyle = '#f8f9fa';
+                    ctx.fillRect(sign.x + 7, sign.y + 6 + floatY, 10, 4);
+                } else if (sign.isSage) {
+                    // 序章大賢者像素造型（高對比深黑描邊 + 星辰法杖 + 藍光腳底陣）
+                    const bob = Math.sin(timestamp / 300) * 1.5;
+                    const sx = sign.x + 12;
+
+                    // 腳底魔力光環與陰影
+                    ctx.fillStyle = 'rgba(72, 202, 228, 0.35)';
+                    ctx.beginPath();
+                    ctx.ellipse(sx, sign.y + 23, 15, 5.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#90e0ef';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.ellipse(sx, sign.y + 23, 15, 5.5, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // 大賢者外框描邊（覆蓋尖帽、身體與右側法杖）
+                    ctx.fillStyle = '#0b0e14';
+                    ctx.fillRect(sign.x + 7, sign.y - 4 + bob, 10, 5);
+                    ctx.fillRect(sign.x + 3, sign.y + bob, 18, 23);
+                    ctx.fillRect(sign.x + 20, sign.y + 2 + bob, 5, 21);
+
+                    // 深藍星辰長袍與金色領帶
+                    ctx.fillStyle = '#274c77';
+                    ctx.fillRect(sign.x + 4, sign.y + 8 + bob, 16, 14);
+                    ctx.fillStyle = '#ffd166';
+                    ctx.fillRect(sign.x + 10, sign.y + 8 + bob, 4, 14);
+
+                    // 賢者尖帽（亮藍帽身 + 金色帽檐）
+                    ctx.fillStyle = '#3a86ff';
+                    ctx.fillRect(sign.x + 8, sign.y - 3 + bob, 8, 4);
+                    ctx.fillRect(sign.x + 4, sign.y + 1 + bob, 16, 4);
+                    ctx.fillStyle = '#ffd166';
+                    ctx.fillRect(sign.x + 4, sign.y + 4 + bob, 16, 2);
+
+                    // 臉部、眼睛與銀白長鬚
+                    ctx.fillStyle = '#ffcdb2';
+                    ctx.fillRect(sign.x + 6, sign.y + 6 + bob, 12, 4);
+                    ctx.fillStyle = '#0b0e14';
+                    ctx.fillRect(sign.x + 8, sign.y + 7 + bob, 2, 2);
+                    ctx.fillRect(sign.x + 14, sign.y + 7 + bob, 2, 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(sign.x + 6, sign.y + 9 + bob, 12, 6);
+
+                    // 右側星辰法杖與發光寶珠
+                    ctx.fillStyle = '#b08968';
+                    ctx.fillRect(sign.x + 21, sign.y + 6 + bob, 3, 16);
+                    ctx.fillStyle = '#48cae4';
+                    ctx.fillRect(sign.x + 20, sign.y + 2 + bob, 5, 5);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(sign.x + 21, sign.y + 3 + bob, 2, 2);
+                } else {
+                    ctx.fillStyle = '#14181f';
+                    ctx.fillRect(sign.x + 3, sign.y + 3, 18, 20);
+                    ctx.fillStyle = '#adb5bd';
+                    ctx.fillRect(sign.x + 5, sign.y + 5, 14, 14);
+                    ctx.fillStyle = '#ffd166';
+                    ctx.fillRect(sign.x + 8, sign.y + 8, 8, 3);
+                    ctx.fillRect(sign.x + 8, sign.y + 13, 8, 2);
+                }
+            }
+
+            // 3.5 繪製序章星界傳送門
+            if (currentRealm === 'prologue' && portalGate) {
+                const rot = timestamp * 0.003;
+                const pulseR = 24 + Math.sin(timestamp / 180) * 3;
+                ctx.save();
+                ctx.translate(portalGate.x, portalGate.y);
+
+                ctx.fillStyle = 'rgba(78, 168, 222, 0.28)';
+                ctx.beginPath();
+                ctx.arc(0, 0, pulseR + 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.rotate(rot);
+                ctx.strokeStyle = '#ffd166';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-18, -18, 36, 36);
+
+                ctx.rotate(-rot * 2);
+                ctx.strokeStyle = '#90e0ef';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-13, -13, 26, 26);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(0, 0, 7 + Math.sin(timestamp / 140) * 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.font = 'bold 12px "Courier New", "Microsoft JhengHei", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000000';
+                ctx.fillText('🌀 星界傳送門', portalGate.x + 1, portalGate.y - 31);
+                ctx.fillStyle = '#90e0ef';
+                ctx.fillText('🌀 星界傳送門', portalGate.x, portalGate.y - 32);
+                ctx.textAlign = 'left';
+            }
+
+            // 4. 繪製醫療繃帶道具（深色描邊 + 脈衝綠紅光圈，在雪地/沙漠也極為醒目）
+            const floatOffset = Math.sin(timestamp / 220) * 2.5;
+            const pulseGlow = 0.55 + Math.sin(timestamp / 180) * 0.25;
+            for (const b of bandages) {
+                if (b.collected) continue;
+                const col = Math.floor((b.x + 12) / TILE_SIZE);
+                const row = Math.floor((b.y + 12) / TILE_SIZE);
+                if (!fogGrid[row]?.[col]) continue;
+
+                const by = b.y + floatOffset;
+                ctx.fillStyle = `rgba(82, 183, 136, ${pulseGlow * 0.55})`;
+                ctx.beginPath();
+                ctx.arc(b.x + 12, b.y + 15, 14, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#14181f';
+                ctx.fillRect(b.x + 2, by + 4, 20, 16);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(b.x + 4, by + 6, 16, 12);
+                ctx.fillStyle = '#d90429';
+                ctx.fillRect(b.x + 10, by + 8, 4, 8);
+                ctx.fillRect(b.x + 8, by + 10, 8, 4);
+            }
+
+            // 5. 繪製區域專屬武器發光魔法陣（雙層旋轉光環 + 黑邊像素武器紋章）
+            if (weaponPickup && !weaponPickup.collected) {
+                const wInfo = WEAPONS[weaponPickup.weaponId];
+                const wy = weaponPickup.y + floatOffset;
+                const wPulse = 15 + Math.sin(timestamp / 160) * 3;
+
+                ctx.fillStyle = 'rgba(255, 209, 102, 0.38)';
+                ctx.beginPath();
+                ctx.arc(weaponPickup.x + 12, weaponPickup.y + 14, wPulse, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffd166';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(weaponPickup.x + 12, weaponPickup.y + 14, wPulse - 2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.fillStyle = '#10141c';
+                ctx.fillRect(weaponPickup.x + 4, wy + 3, 16, 18);
+                ctx.fillStyle = wInfo.color;
+                ctx.fillRect(weaponPickup.x + 6, wy + 5, 12, 14);
+                ctx.fillStyle = wInfo.coreColor;
+                ctx.fillRect(weaponPickup.x + 9, wy + 8, 6, 8);
+            }
+
+            // 6. 繪製寶箱（黑色像素外框 + 未開啟金色光暈與閃耀寶石扣）
+            for (const chest of chests) {
+                const col = Math.floor((chest.x + 12) / TILE_SIZE);
+                const row = Math.floor((chest.y + 12) / TILE_SIZE);
+                if (!fogGrid[row]?.[col]) continue;
+
+                if (!chest.opened) {
+                    ctx.fillStyle = `rgba(255, 214, 10, ${pulseGlow * 0.45})`;
+                    ctx.beginPath();
+                    ctx.arc(chest.x + 12, chest.y + 14, 16, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = '#10141c';
+                ctx.fillRect(chest.x, chest.y + 4, 24, 20);
+                ctx.fillStyle = chest.opened ? '#495057' : '#b06c3b';
+                ctx.fillRect(chest.x + 2, chest.y + 6, 20, 16);
+                ctx.fillStyle = chest.opened ? '#343a40' : chest.color;
+                ctx.fillRect(chest.x + 2, chest.y + 10, 20, 4);
+                if (!chest.opened) {
+                    ctx.fillStyle = '#fff3b0';
+                    ctx.fillRect(chest.x + 10, chest.y + 8, 4, 8);
+                }
+            }
+
+            // 7. 繪製怪物
+            for (const m of monsters) {
+                const col = Math.floor((m.x + 12) / TILE_SIZE);
+                const row = Math.floor((m.y + 12) / TILE_SIZE);
+                if (!fogGrid[row]?.[col]) continue;
+                drawMonsterSprite(m, timestamp);
+            }
+
+            // 8. 繪製主角
+            drawHeroSprite(player.x, player.y, player.dir, player.animFrame);
+
+            // 9. 繪製劍氣與武器揮砍光弧
+            for (const sl of slashes) {
+                const alpha = sl.life / sl.maxLife;
+                ctx.save();
+                ctx.translate(sl.x, sl.y);
+                ctx.rotate(sl.angle);
+                ctx.strokeStyle = sl.color;
+                ctx.globalAlpha = alpha;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(0, 0, sl.radius, -1.05, 1.05);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 10. 繪製敵我雙方彈幕子彈
+            for (const b of bullets) {
+                ctx.fillStyle = b.color;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = b.coreColor;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, Math.max(2, b.radius * 0.48), 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 11. 繪製戰爭迷霧（序章房間與聖光天堂關卡自動無迷霧）
+            if (currentRealm !== 'heaven' && currentRealm !== 'prologue') {
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (!fogGrid[r][c]) {
+                            ctx.fillStyle = currentRealm === 'hell' ? 'rgba(18, 6, 8, 0.88)' : 'rgba(12, 16, 24, 0.86)';
+                            ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        }
+                    }
+                }
+            }
+
+            // 12. 繪製粒子與飄浮提示文字
+            for (const pt of particles) {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+                ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+            }
+            ctx.globalAlpha = 1;
+
+            ctx.font = 'bold 14px "Courier New", "Microsoft JhengHei", monospace';
+            ctx.textAlign = 'center';
+            for (const ft of floatingTexts) {
+                ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife);
+                ctx.fillStyle = '#000000';
+                ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+            }
+            ctx.globalAlpha = 1;
+            ctx.textAlign = 'left';
+        }
+
+        function gameLoop(timestamp) {
+            if (!isPaused && !isOnMainMenu) {
+                updatePlayer();
+                updateMonstersAndBullets();
+            }
+            render(timestamp);
+            requestAnimationFrame(gameLoop);
+        }
+
+        function togglePause(forceState = null) {
+            if (isOnMainMenu) return;
+            isPaused = forceState !== null ? forceState : !isPaused;
+            if (isPaused) {
+                keys.w = keys.a = keys.s = keys.d = false;
+                player.isMoving = false;
+                confirmHomePanel.style.display = 'none';
+                pauseMainPanel.style.display = 'block';
+                pauseOverlay.classList.add('active');
+                btnPause.textContent = '▶️ 繼續';
+            } else {
+                pauseOverlay.classList.remove('active');
+                confirmHomePanel.style.display = 'none';
+                pauseMainPanel.style.display = 'block';
+                btnPause.textContent = '⏸️ 暫停';
+            }
+        }
+
+        // --- 鍵盤 W / A / S / D 與滑鼠左鍵攻擊監聽 ---
+        function setKeyState(e, isDown) {
+            const k = e.key.toLowerCase();
+            if (e.code === 'KeyW' || e.code === 'ArrowUp' || k === 'w') keys.w = isDown;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft' || k === 'a') keys.a = isDown;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown' || k === 's') keys.s = isDown;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight' || k === 'd') keys.d = isDown;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                if (dialogueBox.style.display === 'block') {
+                    e.preventDefault();
+                    playUiClickSfx();
+                    advanceDialogue();
+                    return;
+                }
+            }
+            if (e.code === 'KeyP' || e.code === 'Escape') {
+                e.preventDefault();
+                if (settingsOverlay.classList.contains('active')) {
+                    settingsOverlay.classList.remove('active');
+                    return;
+                }
+                if (!isOnMainMenu) togglePause();
+                return;
+            }
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                e.preventDefault();
+            }
+            if (isPaused || isOnMainMenu) return;
+            setKeyState(e, true);
+        });
+
+        window.addEventListener('keyup', (e) => {
+            setKeyState(e, false);
+        });
+
+        window.addEventListener('blur', () => {
+            keys.w = keys.a = keys.s = keys.d = false;
+            player.isMoving = false;
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (isPaused || isOnMainMenu) return;
+            if (e.button === 0) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const clickX = (e.clientX - rect.left) * scaleX;
+                const clickY = (e.clientY - rect.top) * scaleY;
+                triggerPlayerAttack(clickX, clickY);
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (isPaused || isOnMainMenu) return;
+            if (e.touches.length > 0) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const touchX = (e.touches[0].clientX - rect.left) * scaleX;
+                const touchY = (e.touches[0].clientY - rect.top) * scaleY;
+                triggerPlayerAttack(touchX, touchY);
+            }
+        }, { passive: true });
+
+        // 行動端虛擬方向鍵監聽
+        document.querySelectorAll('.dpad-btn').forEach(btn => {
+            const dir = btn.dataset.dir;
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (!isPaused && !isOnMainMenu) keys[dir] = true;
+            }, { passive: false });
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys[dir] = false;
+            }, { passive: false });
+            btn.addEventListener('mousedown', () => {
+                if (!isPaused && !isOnMainMenu) keys[dir] = true;
+            });
+            btn.addEventListener('mouseup', () => { keys[dir] = false; });
+            btn.addEventListener('mouseleave', () => { keys[dir] = false; });
+        });
+
+        // 主畫面與設定選單按鈕事件
+        btnStartGame.addEventListener('click', () => {
+            btnStartGame.blur();
+            ensureAudioCtx();
+            startBgmLoop();
+            playUiClickSfx();
+            isOnMainMenu = false;
+            mainMenuOverlay.classList.remove('active');
+            initGame();
+            togglePause(false);
+        });
+
+        btnOpenSettings.addEventListener('click', () => {
+            btnOpenSettings.blur();
+            ensureAudioCtx();
+            playUiClickSfx();
+            settingsOverlay.classList.add('active');
+        });
+
+        btnPauseSettings.addEventListener('click', () => {
+            btnPauseSettings.blur();
+            ensureAudioCtx();
+            playUiClickSfx();
+            settingsOverlay.classList.add('active');
+        });
+
+        btnCloseSettings.addEventListener('click', () => {
+            btnCloseSettings.blur();
+            playUiClickSfx();
+            settingsOverlay.classList.remove('active');
+        });
+
+        bgmVolSlider.addEventListener('input', (e) => {
+            ensureAudioCtx();
+            startBgmLoop();
+            const val = Number(e.target.value);
+            bgmVolume = val / 100;
+            bgmVolText.textContent = `${val}%`;
+        });
+
+        sfxVolSlider.addEventListener('input', (e) => {
+            const val = Number(e.target.value);
+            sfxVolume = val / 100;
+            sfxVolText.textContent = `${val}%`;
+        });
+
+        sfxVolSlider.addEventListener('change', () => {
+            playShootSfx('default');
+        });
+
+        btnPause.addEventListener('click', () => {
+            btnPause.blur();
+            playUiClickSfx();
+            togglePause();
+        });
+
+        btnResume.addEventListener('click', () => {
+            btnResume.blur();
+            playUiClickSfx();
+            togglePause(false);
+        });
+
+        btnReset.addEventListener('click', () => {
+            btnReset.blur();
+            playUiClickSfx();
+            initGame();
+        });
+
+        btnReturnTitle.addEventListener('click', () => {
+            btnReturnTitle.blur();
+            playUiClickSfx();
+            pauseMainPanel.style.display = 'none';
+            confirmHomePanel.style.display = 'block';
+        });
+
+        btnConfirmHomeYes.addEventListener('click', () => {
+            btnConfirmHomeYes.blur();
+            playUiClickSfx();
+            returnToMainMenu();
+        });
+
+        btnConfirmHomeNo.addEventListener('click', () => {
+            btnConfirmHomeNo.blur();
+            playUiClickSfx();
+            confirmHomePanel.style.display = 'none';
+            pauseMainPanel.style.display = 'block';
+        });
+
+        btnPlayAgain.addEventListener('click', () => {
+            btnPlayAgain.blur();
+            playUiClickSfx();
+            initGame();
+        });
+
+        dialogueBox.addEventListener('click', (e) => {
+            e.stopPropagation();
+            playUiClickSfx();
+            advanceDialogue();
+        });
+
+        // 初始化背景預覽並顯示主畫面
+        generateMainMenuBackground();
+        initGame();
+        hideDialogue();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
